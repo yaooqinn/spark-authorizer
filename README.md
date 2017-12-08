@@ -48,7 +48,7 @@ res2: Seq[org.apache.spark.sql.catalyst.rules.Rule[org.apache.spark.sql.catalyst
 Note that extra optimizations are appended to the end of all the inner optimizing rules.
 It's good for us to do authorization after column pruning.
 
-Your may notice that it only shut the door for men with a noble character but leave the door open for the scheming bitches.
+Your may notice that it only shut the door for men with a noble character but leave the door open for the scheming ones.
 
 To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
 
