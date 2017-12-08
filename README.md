@@ -71,9 +71,11 @@ Without modifying, you either control the spark session such as supplying a Thri
 ## Suffer for the Authorization Pain
 ---
 
-We create an ranger policy as below:
+We create a ranger policy as below:
 
-![ranger-prolcy-details](./img/ranger-prolcy-details.jpg)
+![ranger-prolcy-details](./img/ranger-prolcy-details.png)
+
+Check Privilage with some simple cases.
 
 ### show database
 
