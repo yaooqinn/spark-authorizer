@@ -1,3 +1,4 @@
+
 # Spark Authorizer
 ---
 
@@ -30,13 +31,16 @@ bin/spark-shell --master yarn --proxy-user hzyaoqin
 
 Secondly, implement the Authorizer Rule to Spark's extra Optimizations.
 
-```
+```scala
 import org.apache.spark.sql.catalyst.optimizer.Authorizer
-spark.experimental.extraOptimizations ++= Seq(Authorizer)
+```
 
+```scala
+spark.experimental.extraOptimizations ++= Seq(Authorizer)
 ```
+
 Check it out
-```
+```scala
 scala> spark.experimental.extraOptimizations
 res2: Seq[org.apache.spark.sql.catalyst.rules.Rule[org.apache.spark.sql.catalyst.plans.logical.LogicalPlan]] = List(org.apache.spark.sql.catalyst.optimizer.Authorizer$@1196537d)
 ```
@@ -49,12 +53,12 @@ Your may notice that it only shut the door for men with a noble character but le
 To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
 
 
-```
+```scala
 @volatile var extraOptimizations: Seq[Rule[LogicalPlan]] = Nil
 ```
 to
 
-```
+```scala
 @volatile val extraOptimizations: Seq[Rule[LogicalPlan]] = Seq(Authorizer)
 
 ```
@@ -74,7 +78,7 @@ We create an ranger policy as below:
 ### show database
 
 Actually, user [hzyaoqin] show only see only one database -- tpcds_10g_ext, this is not a bug, but a compromise not hacking 
-```
+```sql
 scala> spark.sql("show databases").show
 +--------------+
 |  databaseName|
@@ -87,7 +91,7 @@ scala> spark.sql("show databases").show
 
 ### switch database
 
-```
+```sql
 scala> spark.sql("use spark_test_db").show
 17/12/08 17:06:17 ERROR optimizer.Authorizer:
 +===============================+
@@ -101,7 +105,7 @@ scala> spark.sql("use spark_test_db").show
 Oops...
 
 
-```
+```sql
 scala> spark.sql("use tpcds_10g_ext").show
 ++
 ||
@@ -112,7 +116,7 @@ LOL...
 
 
 ### select 
-```
+```sql
 scala> spark.sql("select cp_type from catalog_page limit 1").show
 17/12/08 17:09:58 ERROR optimizer.Authorizer:
 +===============================+
@@ -125,7 +129,7 @@ scala> spark.sql("select cp_type from catalog_page limit 1").show
 ```
 Oops...
 
-```
+```sql
 scala> spark.sql("select * from call_center limit 1").show
 +-----------------+-----------------+-----------------+---------------+-----------------+---------------+--------+--------+------------+--------+--------+-----------+---------+--------------------+--------------------+-----------------+-----------+----------------+----------+---------------+----------------+--------------+--------------+---------------+-------+-----------------+--------+------+-------------+-------------+-----------------+
 |cc_call_center_sk|cc_call_center_id|cc_rec_start_date|cc_rec_end_date|cc_closed_date_sk|cc_open_date_sk| cc_name|cc_class|cc_employees|cc_sq_ft|cc_hours| cc_manager|cc_mkt_id|        cc_mkt_class|         cc_mkt_desc|cc_market_manager|cc_division|cc_division_name|cc_company|cc_company_name|cc_street_number|cc_street_name|cc_street_type|cc_suite_number|cc_city|        cc_county|cc_state|cc_zip|   cc_country|cc_gmt_offset|cc_tax_percentage|
