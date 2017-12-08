@@ -18,7 +18,7 @@
 package org.apache.spark.sql.catalyst.optimizer
 
 import org.apache.hadoop.hive.ql.plan.HiveOperation
-import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType}
 import org.apache.hadoop.hive.ql.session.SessionState
 
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -58,13 +58,30 @@ object Authorizer extends Rule[LogicalPlan] {
       val hiveAuthzContext = getHiveAuthzContext(plan, state, "")
       Option(state.getAuthorizerV2) match {
         case Some(authz) =>
-          authz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
+          try {
+            authz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
+          } catch {
+            case hae: HiveAccessControlException =>
+              logError(
+                s"""
+                   |+===============================+
+                   ||Spark SQL Authorization Failure|
+                   ||-------------------------------|
+                   ||${hae.getMessage}
+                   ||-------------------------------|
+                   ||Spark SQL Authorization Failure|
+                   |+===============================+
+                 """.stripMargin)
+              throw hae
+            case e: Exception => throw e
+          }
         case None =>
           logWarning("Authorizer V2 not configured.")
       }
-      //
+      // state
       plan match {
         case SetDatabaseCommand(databaseName) => state.setCurrentDatabase(databaseName)
+        case _ =>
       }
     }
     plan
