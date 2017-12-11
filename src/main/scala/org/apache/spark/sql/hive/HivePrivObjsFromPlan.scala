@@ -209,7 +209,8 @@ private[sql] object HivePrivObjsFromPlan {
         case ShowFunctionsCommand(db, _, _, _) => db.foreach(addDbLevelObjs(_, inputObjs))
         case ShowPartitionsCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
         case ShowTablePropertiesCommand(table, _) => addTableOrViewLevelObjs(table, inputObjs)
-        case ShowTablesCommand(db, _) => db.foreach(addDbLevelObjs(_, inputObjs))
+        case ShowTablesCommand(db, _) =>
+          addDbLevelObjs(db.getOrElse(this.getCurrentDatabase()), inputObjs)
         case TruncateTableCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
         case _ =>
         // AddFileCommand

@@ -1,12 +1,11 @@
 
 # Spark Authorizer
----
 
 **Spark Authorizer** provides SQL Standard Authorization for Apache Spark.
 
+---
 
 ## Building Spark Authorizer
----
 
 Spark Authorizer is built using [Apache Maven](http://maven.apache.org). To build it, run:
 
@@ -14,14 +13,17 @@ Spark Authorizer is built using [Apache Maven](http://maven.apache.org). To buil
 mvn package
 ```
 
-## Install
 ---
+
+## Installing Spark Authorizer to Spark
+
   1. cp spark-authorizer-<version>.jar $SPARK_HOME/jars
   2. install ranger-hive-plugin for spark
   3. configure you hive-site.xml and ranger configuration file, you may find an sample in [./conf]
 
-## Interactive Spark Shell
 ---
+
+## Interactive Spark Shell
 
 The easiest way to start using Spark is through the Scala shell:
 
@@ -67,9 +69,9 @@ Make extraOptimizations to a `val` to avoid reassignment.
 
 Without modifying, you either control the spark session such as supplying a Thrift/JDBC Sever or hope for "Manner maketh Man"
 
+---
 
 ## Suffer for the Authorization Pain
----
 
 We create a ranger policy as below:
 
@@ -143,6 +145,4 @@ scala> spark.sql("select * from call_center limit 1").show
 
 LOL...
 
-
-
-
+---

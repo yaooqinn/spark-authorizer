@@ -41,7 +41,7 @@ import org.apache.spark.util.Utils
  */
 private[sql] object SessionStateOfHive {
 
-  private lazy val sparkSession =
+  private def sparkSession =
     SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession).get
 
   private def hadoopConf = {
@@ -53,26 +53,28 @@ private[sql] object SessionStateOfHive {
     conf
   }
 
-  private def getCurrentUser(): String = Utils.getCurrentUserName()
-
-  def isHiveSessionState(): Boolean = {
-      sparkSession.sessionState.isInstanceOf[HiveSessionState]
+  private def isHiveSessionState(): Boolean = {
+    sparkSession.sessionState.isInstanceOf[HiveSessionState]
   }
 
-  def apply(): Option[SessionState] = {
-    if (isHiveSessionState()) {
+  private val state: Option[SessionState] = {
+    if (this.isHiveSessionState()) {
       Option(SessionState.get()).orElse {
-        Some(newState())
+        Some(this.newState())
       }
     } else {
       None
     }
   }
 
+  private def getCurrentUser(): String = Utils.getCurrentUserName()
+
   private def newState(): SessionState = {
     val hiveConf = new HiveConf(hadoopConf, classOf[SessionState])
-    val state = new SessionState(hiveConf, getCurrentUser())
+    val state = new SessionState(hiveConf, this.getCurrentUser())
     SessionState.start(state)
     state
   }
+
+  def apply(): Option[SessionState] = state
 }
