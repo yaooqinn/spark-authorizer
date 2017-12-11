@@ -76,7 +76,7 @@ private[sql] object HivePrivObjsFromPlan {
 
         inputObjs.add(HivePrivilegeObjectHelper(
           hivePrivObjType,
-          table.identifier.database.getOrElse(getCurrentDatabase()),
+          table.identifier.database.getOrElse(this.getCurrentDatabase()),
           table.identifier.table,
           partKeys.toList.asJava,
           fieldNames.toList.asJava))
@@ -122,8 +122,7 @@ private[sql] object HivePrivObjsFromPlan {
       outputObjs: JList[HivePrivilegeObject]): Unit = {
     logicalPlan match {
       case CreateTable(tableDesc, mode, maybePlan) =>
-        addDbLevelObjs(
-          tableDesc.identifier.database.getOrElse(this.getCurrentDatabase()), outputObjs)
+        addDbLevelObjs(tableDesc.identifier, outputObjs)
         addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, mode)
         maybePlan.foreach {
           buildInputHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
@@ -170,15 +169,10 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
         case CreateTableLikeCommand(targetTable, sourceTable, _) =>
+          addDbLevelObjs(targetTable, outputObjs)
           addTableOrViewLevelObjs(targetTable, outputObjs)
-          val sourceDbName = sourceTable.database.getOrElse(getCurrentDatabase)
-          val sourceTableName = sourceTable.table
-          inputObjs.add(
-            HivePrivilegeObjectHelper(
-              HivePrivilegeObjectType.TABLE_OR_VIEW,
-              sourceDbName,
-              sourceTableName))
-
+          addDbLevelObjs(sourceTable, inputObjs)
+          addTableOrViewLevelObjs(sourceTable, inputObjs)
         case CreateViewCommand(_, _, _, _, _, child, _, _, _) =>
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         case DescribeDatabaseCommand(databaseName, _) =>
@@ -211,8 +205,7 @@ private[sql] object HivePrivObjsFromPlan {
         case ShowFunctionsCommand(db, _, _, _) => db.foreach(addDbLevelObjs(_, inputObjs))
         case ShowPartitionsCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
         case ShowTablePropertiesCommand(table, _) => addTableOrViewLevelObjs(table, inputObjs)
-        case ShowTablesCommand(db, _) =>
-          addDbLevelObjs(db.getOrElse(this.getCurrentDatabase()), inputObjs)
+        case ShowTablesCommand(db, _) => addDbLevelObjs(db, inputObjs)
         case TruncateTableCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
         case _ =>
         // AddFileCommand
@@ -243,6 +236,25 @@ private[sql] object HivePrivObjsFromPlan {
     objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
+  private def addDbLevelObjs(
+      dbOption: Option[String],
+      objs: JList[HivePrivilegeObject]): Unit = {
+    val dbName = dbOption.getOrElse(this.getCurrentDatabase())
+    objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
+  }
+
+  /**
+   * Add database level hive privilege objects to input or output list
+   * @param tblIdentifer
+   * @param objs
+   */
+  private def addDbLevelObjs(
+      tblIdentifer: TableIdentifier,
+      objs: JList[HivePrivilegeObject]): Unit = {
+    val dbName = tblIdentifer.database.getOrElse(this.getCurrentDatabase())
+    objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
+  }
+
   /**
    * Add table level hive privilege objects to input or output list
    * @param tableName
@@ -253,7 +265,7 @@ private[sql] object HivePrivObjsFromPlan {
       tableName: TableIdentifier,
       objs: JList[HivePrivilegeObject],
       mode: SaveMode = SaveMode.ErrorIfExists): Unit = {
-    val dbName = tableName.database.getOrElse(getCurrentDatabase())
+    val dbName = tableName.database.getOrElse(this.getCurrentDatabase())
     val tbName = tableName.table
     val hivePrivObjectActionType = getHivePrivObjActionType(mode)
     objs.add(
@@ -274,7 +286,7 @@ private[sql] object HivePrivObjsFromPlan {
       databaseName: Option[String],
       functionName: String,
       objs: JList[HivePrivilegeObject]): Unit = {
-    val dbName = databaseName.getOrElse(getCurrentDatabase)
+    val dbName = databaseName.getOrElse(this.getCurrentDatabase)
     objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.FUNCTION, dbName, functionName))
   }
 

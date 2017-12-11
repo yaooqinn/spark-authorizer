@@ -134,8 +134,8 @@ object Authorizer extends Rule[LogicalPlan] {
              | _: CreateDataSourceTableCommand => HiveOperation.CREATETABLE
         case _: TruncateTableCommand => HiveOperation.TRUNCATETABLE
         case _: CreateDataSourceTableAsSelectCommand
-             | _: CreateHiveTableAsSelectCommand
-             | _: CreateTableLikeCommand => HiveOperation.CREATETABLE_AS_SELECT
+             | _: CreateHiveTableAsSelectCommand => HiveOperation.CREATETABLE_AS_SELECT
+        case _: CreateTableLikeCommand => HiveOperation.CREATETABLE
         case _: AlterDatabasePropertiesCommand => HiveOperation.ALTERDATABASE
         case _: DescribeDatabaseCommand => HiveOperation.DESCDATABASE
         // case _: AlterViewAsCommand => HiveOperation.ALTERVIEW_AS
