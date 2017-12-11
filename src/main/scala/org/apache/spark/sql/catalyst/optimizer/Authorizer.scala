@@ -84,6 +84,7 @@ object Authorizer extends Rule[LogicalPlan] {
         case _ =>
       }
     }
+    // We just return the original plan here, so this rule will be executed only once
     plan
   }
 

@@ -26,6 +26,7 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObje
 
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.catalyst.TableIdentifier
+import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObjectHelper
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -100,6 +101,13 @@ private[sql] object HivePrivObjsFromPlan {
           partKeys.toList.asJava,
           fieldNames.toList.asJava))
 
+      case UnresolvedRelation(tableIdentifier, _) =>
+        // Normally, we shouldn't meet UnresolvedRelation here in an optimized plan.
+        // Unfortunately, the real world is always a place where miracles happen.
+        // We check the privileges directly without resolving the plan and leave everything
+        // to spark to do.
+        addTableOrViewLevelObjs(tableIdentifier, inputObjs)
+
       case bn: BinaryNode =>
         buildInputHivePrivObjs(bn.left, inputObjs, hivePrivObjType, projectionList)
         buildInputHivePrivObjs(bn.right, inputObjs, hivePrivObjType, projectionList)
@@ -173,8 +181,16 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(targetTable, outputObjs)
           addDbLevelObjs(sourceTable, inputObjs)
           addTableOrViewLevelObjs(sourceTable, inputObjs)
-        case CreateViewCommand(_, _, _, _, _, child, _, _, _) =>
+        case CreateViewCommand(viewName, _, _, _, _, child, _, _, viewType) =>
+          viewType match {
+            case PersistedView =>
+              // PersistedView will be tied to a database
+              addDbLevelObjs(viewName, outputObjs)
+              addTableOrViewLevelObjs(viewName, outputObjs)
+            case _ =>
+          }
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
         case DescribeDatabaseCommand(databaseName, _) =>
           addDbLevelObjs(databaseName, inputObjs)
         case DescribeFunctionCommand(functionName, _) =>
@@ -236,6 +252,11 @@ private[sql] object HivePrivObjsFromPlan {
     objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
+  /**
+   * Add database level hive privilege objects to input or output list
+   * @param dbOption
+   * @param objs
+   */
   private def addDbLevelObjs(
       dbOption: Option[String],
       objs: JList[HivePrivilegeObject]): Unit = {
@@ -245,13 +266,13 @@ private[sql] object HivePrivObjsFromPlan {
 
   /**
    * Add database level hive privilege objects to input or output list
-   * @param tblIdentifer
+   * @param tableIdentifier
    * @param objs
    */
   private def addDbLevelObjs(
-      tblIdentifer: TableIdentifier,
+      tableIdentifier: TableIdentifier,
       objs: JList[HivePrivilegeObject]): Unit = {
-    val dbName = tblIdentifer.database.getOrElse(this.getCurrentDatabase())
+    val dbName = tableIdentifier.database.getOrElse(this.getCurrentDatabase())
     objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
@@ -304,6 +325,11 @@ private[sql] object HivePrivObjsFromPlan {
     }
   }
 
+  /**
+   * HivePrivObjectActionType INSERT or INSERT_OVERWRITE
+   * @param overwrite
+   * @return
+   */
   private def overwriteToSaveMode(overwrite: Boolean): SaveMode = {
     if (overwrite) {
       SaveMode.Overwrite
@@ -312,6 +338,10 @@ private[sql] object HivePrivObjsFromPlan {
     }
   }
 
+  /**
+   * Get the current database
+   * @return
+   */
   private def getCurrentDatabase(): String = {
     SessionStateOfHive().get.getCurrentDatabase
   }
