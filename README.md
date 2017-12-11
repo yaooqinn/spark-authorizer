@@ -148,14 +148,9 @@ LOL...
 ### Dataset/DataFrame
 
 ```scala
-scala> spark.read.table("call_center").limit(1).collect
-collect   collectAsList
-
-scala> spark.read.table("call_center").limit(1).collect
-17/12/11 14:45:30 WARN util.Utils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.debug.maxToStringFields' in SparkEnv.conf.
-res3: Array[org.apache.spark.sql.Row] = Array([1,AAAAAAAABAAAAAAA,1998-01-01,null,null,2450952,NY Metro,large,2,1138,8AM-4PM,Bob Belcher,6,More than other authori,Shared others could not count fully dollars. New members ca,Julius Tran,3,pri,6,cally,730,Ash Hill,Boulevard,Suite 0,Midway,Williamson County,TN,31904,United States,-5.00,0.11])
-
 scala> spark.read.table("catalog_page").limit(1).collect
+```
+```
 17/12/11 14:46:33 ERROR optimizer.Authorizer:
 +===============================+
 |Spark SQL Authorization Failure|
@@ -165,4 +160,14 @@ scala> spark.read.table("catalog_page").limit(1).collect
 |Spark SQL Authorization Failure|
 +===============================+
 ```
+Oops...
+
+```scala
+scala> spark.read.table("call_center").limit(1).collect
+```
+```
+res3: Array[org.apache.spark.sql.Row] = Array([1,AAAAAAAABAAAAAAA,1998-01-01,null,null,2450952,NY Metro,large,2,1138,8AM-4PM,Bob Belcher,6,More than other authori,Shared others could not count fully dollars. New members ca,Julius Tran,3,pri,6,cally,730,Ash Hill,Boulevard,Suite 0,Midway,Williamson County,TN,31904,United States,-5.00,0.11])
+```
+LOL...
+
 ---
