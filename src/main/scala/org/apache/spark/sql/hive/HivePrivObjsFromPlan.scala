@@ -122,6 +122,8 @@ private[sql] object HivePrivObjsFromPlan {
       outputObjs: JList[HivePrivilegeObject]): Unit = {
     logicalPlan match {
       case CreateTable(tableDesc, mode, maybePlan) =>
+        addDbLevelObjs(
+          tableDesc.identifier.database.getOrElse(this.getCurrentDatabase()), outputObjs)
         addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, mode)
         maybePlan.foreach {
           buildInputHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
