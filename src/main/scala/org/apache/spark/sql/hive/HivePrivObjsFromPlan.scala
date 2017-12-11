@@ -169,7 +169,8 @@ private[sql] object HivePrivObjsFromPlan {
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         case CreateDataSourceTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
-        case CreateFunctionCommand(databaseName, functionName, _, _, _) =>
+        case CreateFunctionCommand(databaseName, functionName, _, _, false) =>
+          addDbLevelObjs(databaseName, outputObjs)
           addFunctionLevelObjs(databaseName, functionName, outputObjs)
         case CreateHiveTableAsSelectCommand(tableDesc, child, _) =>
           addTableOrViewLevelObjs(tableDesc.identifier, outputObjs)
@@ -307,7 +308,7 @@ private[sql] object HivePrivObjsFromPlan {
       databaseName: Option[String],
       functionName: String,
       objs: JList[HivePrivilegeObject]): Unit = {
-    val dbName = databaseName.getOrElse(this.getCurrentDatabase)
+    val dbName = databaseName.getOrElse(this.getCurrentDatabase())
     objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.FUNCTION, dbName, functionName))
   }
 
