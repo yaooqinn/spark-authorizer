@@ -231,7 +231,11 @@ private[sql] object HivePrivObjsFromPlan {
 
         case DescribeTableCommand(table, _, _, _) => addTableOrViewLevelObjs(table, inputObjs)
 
-        case DropDatabaseCommand(databaseName, _, _) => addDbLevelObjs(databaseName, outputObjs)
+        case DropDatabaseCommand(databaseName, _, _) =>
+          // outputObjs are enough for privilege check, adding inputObjs for consistency with hive
+          // behaviour in case of some unexpected issues.
+          addDbLevelObjs(databaseName, inputObjs)
+          addDbLevelObjs(databaseName, outputObjs)
 
         case DropFunctionCommand(databaseName, functionName, _, _) =>
           addFunctionLevelObjs(databaseName, functionName, outputObjs)
