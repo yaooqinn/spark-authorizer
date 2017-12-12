@@ -165,6 +165,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateDatabaseCommand(databaseName, _, _, _, _) =>
           addDbLevelObjs(databaseName, outputObjs)
         case CreateDataSourceTableAsSelectCommand(table, mode, child) =>
+          addDbLevelObjs(table.identifier, outputObjs)
           addTableOrViewLevelObjs(table.identifier, outputObjs, mode)
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         case CreateDataSourceTableCommand(table, _) =>
@@ -173,6 +174,7 @@ private[sql] object HivePrivObjsFromPlan {
           addDbLevelObjs(databaseName, outputObjs)
           addFunctionLevelObjs(databaseName, functionName, outputObjs)
         case CreateHiveTableAsSelectCommand(tableDesc, child, _) =>
+          addDbLevelObjs(tableDesc.identifier, outputObjs)
           addTableOrViewLevelObjs(tableDesc.identifier, outputObjs)
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         case CreateTableCommand(table, _) =>
