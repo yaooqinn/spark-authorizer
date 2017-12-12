@@ -75,12 +75,11 @@ private[sql] object HivePrivObjsFromPlan {
           table.schema.fieldNames.filter(projectionList.map(_.name).contains(_))
         }
 
-        inputObjs.add(HivePrivilegeObjectHelper(
-          hivePrivObjType,
-          table.identifier.database.getOrElse(this.getCurrentDatabase()),
-          table.identifier.table,
+        addTableOrViewLevelObjs(
+          table.identifier,
+          inputObjs,
           partKeys.toList.asJava,
-          fieldNames.toList.asJava))
+          fieldNames.toList.asJava)
 
       case mr @ MetastoreRelation(_, _) =>
         val partKeys = if (projectionList.isEmpty) {
@@ -94,12 +93,11 @@ private[sql] object HivePrivObjsFromPlan {
           mr.catalogTable.schema.fieldNames.filter(projectionList.map(_.prettyName).contains(_))
         }
 
-        inputObjs.add(HivePrivilegeObjectHelper(
-          hivePrivObjType,
-          mr.databaseName,
-          mr.tableName,
+        addTableOrViewLevelObjs(
+          mr.catalogTable.identifier,
+          inputObjs,
           partKeys.toList.asJava,
-          fieldNames.toList.asJava))
+          fieldNames.toList.asJava)
 
       case UnresolvedRelation(tableIdentifier, _) =>
         // Normally, we shouldn't meet UnresolvedRelation here in an optimized plan.
@@ -131,7 +129,7 @@ private[sql] object HivePrivObjsFromPlan {
     logicalPlan match {
       case CreateTable(tableDesc, mode, maybePlan) =>
         addDbLevelObjs(tableDesc.identifier, outputObjs)
-        addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, mode)
+        addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, mode = mode)
         maybePlan.foreach {
           buildInputHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         }
@@ -176,6 +174,9 @@ private[sql] object HivePrivObjsFromPlan {
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case AnalyzeTableCommand(tableName, _) =>
+          val columns = new JAList[String]()
+          columns.add("RAW__DATA__SIZE")
+          addTableOrViewLevelObjs(tableName, inputObjs, columns = columns)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case CacheTableCommand(_, plan, _) =>
@@ -186,7 +187,7 @@ private[sql] object HivePrivObjsFromPlan {
 
         case CreateDataSourceTableAsSelectCommand(table, mode, child) =>
           addDbLevelObjs(table.identifier, outputObjs)
-          addTableOrViewLevelObjs(table.identifier, outputObjs, mode)
+          addTableOrViewLevelObjs(table.identifier, outputObjs, mode = mode)
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case CreateDataSourceTableCommand(table, _) =>
@@ -207,6 +208,8 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateTableLikeCommand(targetTable, sourceTable, _) =>
           addDbLevelObjs(targetTable, outputObjs)
           addTableOrViewLevelObjs(targetTable, outputObjs)
+          // hive don't handle source table's privileges, we should not obey that, because
+          // it will cause meta information leak
           addDbLevelObjs(sourceTable, inputObjs)
           addTableOrViewLevelObjs(sourceTable, inputObjs)
 
@@ -242,12 +245,12 @@ private[sql] object HivePrivObjsFromPlan {
         case InsertIntoDataSourceCommand(logicalRelation, child, overwrite) =>
           logicalRelation.catalogTable.foreach { table =>
             addTableOrViewLevelObjs(
-              table.identifier, outputObjs, overwriteToSaveMode(overwrite.enabled))
+              table.identifier, outputObjs, mode = overwriteToSaveMode(overwrite.enabled))
           }
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case LoadDataCommand(table, _, _, isOverwrite, _) =>
-          addTableOrViewLevelObjs(table, outputObjs, overwriteToSaveMode(isOverwrite))
+          addTableOrViewLevelObjs(table, outputObjs, mode = overwriteToSaveMode(isOverwrite))
 
         case SetDatabaseCommand(databaseName) => addDbLevelObjs(databaseName, inputObjs)
 
@@ -327,7 +330,10 @@ private[sql] object HivePrivObjsFromPlan {
   private def addTableOrViewLevelObjs(
       tableName: TableIdentifier,
       objs: JList[HivePrivilegeObject],
-      mode: SaveMode = SaveMode.ErrorIfExists): Unit = {
+      partKeys: JList[String] = null,
+      columns: JList[String] = null,
+      mode: SaveMode = SaveMode.ErrorIfExists,
+      cmdParams: JList[String] = null): Unit = {
     val dbName = tableName.database.getOrElse(this.getCurrentDatabase())
     val tbName = tableName.table
     val hivePrivObjectActionType = getHivePrivObjActionType(mode)
@@ -336,7 +342,10 @@ private[sql] object HivePrivObjsFromPlan {
         HivePrivilegeObjectType.TABLE_OR_VIEW,
         dbName,
         tbName,
-        hivePrivObjectActionType))
+        partKeys,
+        columns,
+        hivePrivObjectActionType,
+        cmdParams))
   }
 
   /**

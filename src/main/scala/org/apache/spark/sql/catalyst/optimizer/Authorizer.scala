@@ -115,7 +115,8 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: AlterTableSetPropertiesCommand
              | _: AlterTableUnsetPropertiesCommand => HiveOperation.ALTERTABLE_PROPERTIES
         case _: AlterTableSerDePropertiesCommand => HiveOperation.ALTERTABLE_SERDEPROPERTIES
-        case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
+        // case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
+        case _: AnalyzeTableCommand => HiveOperation.QUERY
         case _: ShowDatabasesCommand => HiveOperation.SHOWDATABASES
         case _: ShowTablesCommand => HiveOperation.SHOWTABLES
         case _: ShowColumnsCommand => HiveOperation.SHOWCOLUMNS
