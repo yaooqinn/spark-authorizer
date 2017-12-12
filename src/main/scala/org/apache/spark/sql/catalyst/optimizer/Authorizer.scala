@@ -108,7 +108,8 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
         case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
         case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART
-        case _: AlterTableRenameCommand => HiveOperation.ALTERTABLE_RENAME
+        case AlterTableRenameCommand(_, _, isView) =>
+          if (!isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
         case _: AlterTableDropPartitionCommand => HiveOperation.ALTERTABLE_DROPPARTS
         case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS
         case _: AlterTableSetPropertiesCommand

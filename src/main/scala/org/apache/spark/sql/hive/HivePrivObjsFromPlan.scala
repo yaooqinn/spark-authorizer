@@ -138,52 +138,74 @@ private[sql] object HivePrivObjsFromPlan {
 
       case r: RunnableCommand => r match {
         case AlterDatabasePropertiesCommand(dbName, _) => addDbLevelObjs(dbName, outputObjs)
+
         case AlterTableAddPartitionCommand(tableName, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterTableDropPartitionCommand(tableName, _, _, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterTableRecoverPartitionsCommand(tableName, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
-        case AlterTableRenameCommand(tableName, _, _) =>
-          addTableOrViewLevelObjs(tableName, outputObjs)
+
+        case AlterTableRenameCommand(from, to, isView) if !isView || from.database.nonEmpty =>
+          // rename tables / permanent views
+          addTableOrViewLevelObjs(from, inputObjs)
+          addTableOrViewLevelObjs(to, outputObjs)
+
         case AlterTableRenamePartitionCommand(tableName, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterTableSerDePropertiesCommand(tableName, _, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterTableSetLocationCommand(tableName, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterTableSetPropertiesCommand(tableName, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterTableUnsetPropertiesCommand(tableName, _, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case AlterViewAsCommand(_, _, child) =>
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
         case AnalyzeTableCommand(tableName, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case CacheTableCommand(_, plan, _) =>
           plan.foreach {buildInputHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)}
+
         case CreateDatabaseCommand(databaseName, _, _, _, _) =>
           addDbLevelObjs(databaseName, outputObjs)
+
         case CreateDataSourceTableAsSelectCommand(table, mode, child) =>
           addDbLevelObjs(table.identifier, outputObjs)
           addTableOrViewLevelObjs(table.identifier, outputObjs, mode)
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
         case CreateDataSourceTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
+
         case CreateFunctionCommand(databaseName, functionName, _, _, false) =>
           addDbLevelObjs(databaseName, outputObjs)
           addFunctionLevelObjs(databaseName, functionName, outputObjs)
+
         case CreateHiveTableAsSelectCommand(tableDesc, child, _) =>
           addDbLevelObjs(tableDesc.identifier, outputObjs)
           addTableOrViewLevelObjs(tableDesc.identifier, outputObjs)
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
         case CreateTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
+
         case CreateTableLikeCommand(targetTable, sourceTable, _) =>
           addDbLevelObjs(targetTable, outputObjs)
           addTableOrViewLevelObjs(targetTable, outputObjs)
           addDbLevelObjs(sourceTable, inputObjs)
           addTableOrViewLevelObjs(sourceTable, inputObjs)
+
         case CreateViewCommand(viewName, _, _, _, _, child, _, _, viewType) =>
           viewType match {
             case PersistedView =>
@@ -196,18 +218,23 @@ private[sql] object HivePrivObjsFromPlan {
 
         case DescribeDatabaseCommand(databaseName, _) =>
           addDbLevelObjs(databaseName, inputObjs)
+
         case DescribeFunctionCommand(functionName, _) =>
           addFunctionLevelObjs(functionName.database, functionName.funcName, inputObjs)
-        case DescribeTableCommand(table, _, _, _) =>
-          addTableOrViewLevelObjs(table, inputObjs)
-        case DropDatabaseCommand(databaseName, _, _) =>
-          addDbLevelObjs(databaseName, outputObjs)
+
+        case DescribeTableCommand(table, _, _, _) => addTableOrViewLevelObjs(table, inputObjs)
+
+        case DropDatabaseCommand(databaseName, _, _) => addDbLevelObjs(databaseName, outputObjs)
+
         case DropFunctionCommand(databaseName, functionName, _, _) =>
           addFunctionLevelObjs(databaseName, functionName, outputObjs)
+
         case DropTableCommand(tableName, _, false, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
+
         case ExplainCommand(child, _, _) =>
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
         case InsertIntoDataSourceCommand(logicalRelation, child, overwrite) =>
           logicalRelation.catalogTable.foreach { table =>
             addTableOrViewLevelObjs(
@@ -217,15 +244,23 @@ private[sql] object HivePrivObjsFromPlan {
 
         case LoadDataCommand(table, _, _, isOverwrite, _) =>
           addTableOrViewLevelObjs(table, outputObjs, overwriteToSaveMode(isOverwrite))
-        case SetDatabaseCommand(databaseName) =>
-          addDbLevelObjs(databaseName, inputObjs)
+
+        case SetDatabaseCommand(databaseName) => addDbLevelObjs(databaseName, inputObjs)
+
         case ShowColumnsCommand(_, tableName) => addTableOrViewLevelObjs(tableName, inputObjs)
+
         case ShowCreateTableCommand(table) => addTableOrViewLevelObjs(table, inputObjs)
+
         case ShowFunctionsCommand(db, _, _, _) => db.foreach(addDbLevelObjs(_, inputObjs))
+
         case ShowPartitionsCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
+
         case ShowTablePropertiesCommand(table, _) => addTableOrViewLevelObjs(table, inputObjs)
+
         case ShowTablesCommand(db, _) => addDbLevelObjs(db, inputObjs)
+
         case TruncateTableCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
+
         case _ =>
         // AddFileCommand
         // AddJarCommand
