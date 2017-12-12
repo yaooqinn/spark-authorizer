@@ -116,6 +116,7 @@ object Authorizer extends Rule[LogicalPlan] {
              | _: AlterTableUnsetPropertiesCommand => HiveOperation.ALTERTABLE_PROPERTIES
         case _: AlterTableSerDePropertiesCommand => HiveOperation.ALTERTABLE_SERDEPROPERTIES
         // case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
+        // Hive treat AnalyzeTableCommand as QUERY, obey it.
         case _: AnalyzeTableCommand => HiveOperation.QUERY
         case _: ShowDatabasesCommand => HiveOperation.SHOWDATABASES
         case _: ShowTablesCommand => HiveOperation.SHOWTABLES
@@ -126,7 +127,11 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: ShowPartitionsCommand => HiveOperation.SHOWPARTITIONS
         case SetCommand(Some((_, None))) | SetCommand(None) => HiveOperation.SHOWCONF
         case _: CreateFunctionCommand => HiveOperation.CREATEFUNCTION
-        case _: DropFunctionCommand => HiveOperation.DROPFUNCTION
+        // Hive don't check privileges for `drop function command`, what about a unverified user
+        // try to drop functions.
+        // We treat permanent functions as tables for verifying.
+        case DropFunctionCommand(_, _, _, false) => HiveOperation.DROPTABLE
+        case DropFunctionCommand(_, _, _, true) => HiveOperation.DROPFUNCTION
         case _: CreateViewCommand
              | _: CacheTableCommand
              | _: CreateTempViewUsing => HiveOperation.CREATEVIEW
