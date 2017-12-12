@@ -168,7 +168,11 @@ private[sql] object HivePrivObjsFromPlan {
         case AlterTableUnsetPropertiesCommand(tableName, _, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
 
-        case AlterViewAsCommand(_, _, child) =>
+        case AlterViewAsCommand(tableIdentifier, _, child) =>
+          if (tableIdentifier.database.nonEmpty) {
+            // it's a permanent view
+            addTableOrViewLevelObjs(tableIdentifier, outputObjs)
+          }
           buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case AnalyzeTableCommand(tableName, _) =>
