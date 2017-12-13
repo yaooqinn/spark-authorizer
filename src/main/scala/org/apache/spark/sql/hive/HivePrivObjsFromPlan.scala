@@ -97,10 +97,7 @@ private[sql] object HivePrivObjsFromPlan {
       case LogicalRelation(_, _, Some(table)) =>
         handleProjectionForRelation(table)
 
-      case mr @ MetastoreRelation(_, _) =>
-        handleProjectionForRelation(mr.catalogTable)
-
-      case UnresolvedRelation(tableIdentifier, _) =>
+      case UnresolvedRelation(tableIdentifier) =>
         // Normally, we shouldn't meet UnresolvedRelation here in an optimized plan.
         // Unfortunately, the real world is always a place where miracles happen.
         // We check the privileges directly without resolving the plan and leave everything
@@ -218,7 +215,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
 
-        case CreateTableLikeCommand(targetTable, sourceTable, _) =>
+        case CreateTableLikeCommand(targetTable, sourceTable, _, _) =>
           addDbLevelObjs(targetTable, outputObjs)
           addTableOrViewLevelObjs(targetTable, outputObjs)
           // hive don't handle source table's privileges, we should not obey that, because
@@ -242,7 +239,7 @@ private[sql] object HivePrivObjsFromPlan {
         case DescribeFunctionCommand(functionName, _) =>
           addFunctionLevelObjs(functionName.database, functionName.funcName, inputObjs)
 
-        case DescribeTableCommand(table, _, _, _) => addTableOrViewLevelObjs(table, inputObjs)
+        case DescribeTableCommand(table, _, _) => addTableOrViewLevelObjs(table, inputObjs)
 
         case DropDatabaseCommand(databaseName, _, _) =>
           // outputObjs are enough for privilege check, adding inputObjs for consistency with hive
@@ -256,17 +253,17 @@ private[sql] object HivePrivObjsFromPlan {
         case DropTableCommand(tableName, _, false, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
 
-        case ExplainCommand(child, _, _) =>
+        case ExplainCommand(child, _, _, _) =>
           buildBinaryHivePrivObject(child, inputObjs, outputObjs)
 
         case InsertIntoDataSourceCommand(logicalRelation, child, overwrite) =>
           logicalRelation.catalogTable.foreach { table =>
             addTableOrViewLevelObjs(
-              table.identifier, outputObjs, mode = overwriteToSaveMode(overwrite.enabled))
+              table.identifier, outputObjs, mode = overwriteToSaveMode(overwrite))
           }
           buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
-        case InsertIntoHadoopFsRelationCommand(_, _, _, partCols, _, _, _, _, child, mode, table) =>
+        case InsertIntoHadoopFsRelationCommand(_, _, _, partCols, _, _, _, child, mode, table, _) =>
           table foreach { t =>
             addTableOrViewLevelObjs(
               t.identifier,
@@ -292,7 +289,7 @@ private[sql] object HivePrivObjsFromPlan {
 
         case ShowTablePropertiesCommand(table, _) => addTableOrViewLevelObjs(table, inputObjs)
 
-        case ShowTablesCommand(db, _) => addDbLevelObjs(db, inputObjs)
+        case ShowTablesCommand(db, _, _, _) => addDbLevelObjs(db, inputObjs)
 
         case TruncateTableCommand(tableName, _) => addTableOrViewLevelObjs(tableName, outputObjs)
 

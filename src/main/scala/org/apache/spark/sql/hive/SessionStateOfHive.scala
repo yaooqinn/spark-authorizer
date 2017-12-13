@@ -55,7 +55,7 @@ private[sql] object SessionStateOfHive {
    * @return
    */
   private def isHiveSessionState: Boolean = {
-    sparkSession.sessionState.isInstanceOf[HiveSessionState]
+    sparkSession.sharedState.externalCatalog.isInstanceOf[HiveExternalCatalog]
   }
 
   /**

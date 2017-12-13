@@ -21,7 +21,6 @@ import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType}
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.sql.catalyst.SQLBuilder
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
@@ -97,7 +96,7 @@ object Authorizer extends Rule[LogicalPlan] {
   private def logicalPlan2HiveOperation(logicalPlan: LogicalPlan): HiveOperation = {
     logicalPlan match {
       case c: Command => c match {
-        case ExplainCommand(child, _, _) => logicalPlan2HiveOperation(child)
+        case ExplainCommand(child, _, _, _) => logicalPlan2HiveOperation(child)
         case StreamingExplainCommand(qe, _) => logicalPlan2HiveOperation(qe.optimizedPlan)
         case _: LoadDataCommand => HiveOperation.LOAD
         case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
@@ -178,13 +177,7 @@ object Authorizer extends Rule[LogicalPlan] {
     authzContextBuilder.setUserIpAddress(state.getUserIpAddress)
     // set the sql query string, [[LogicalPlan]] contains such information in 2.2 or higher version
     // so this is for evolving..
-    val cmd = command.getOrElse {
-      try {
-        new SQLBuilder(logicalPlan).toSQL
-      } catch {
-        case _: Exception => ""
-      }
-    }
+    val cmd = command.getOrElse("")
     authzContextBuilder.setCommandString(cmd)
     authzContextBuilder.build()
   }
