@@ -17,9 +17,9 @@ mvn package
 
 ## Installing Spark Authorizer to Spark
 
-  1. cp spark-authorizer-<version>.jar $SPARK_HOME/jars
+  1. `cp spark-authorizer-<version>.jar $SPARK_HOME/jars`
   2. install ranger-hive-plugin for spark
-  3. configure you hive-site.xml and ranger configuration file, you may find an sample in [./conf]
+  3. configure you `hive-site.xml` and ranger configuration file, you may find an sample in `[./conf]`
 
 ---
 
@@ -52,7 +52,7 @@ It's good for us to do authorization after column pruning.
 
 Your may notice that it only shut the door for men with a noble character but leave the door open for the scheming ones.
 
-To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
+To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/v2.1.2/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
 
 
 ```scala
