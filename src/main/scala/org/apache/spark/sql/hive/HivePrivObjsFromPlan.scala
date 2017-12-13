@@ -151,6 +151,9 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(table, inputObjs, columns = colsToAdd.map(_.name).toList.asJava)
           addTableOrViewLevelObjs(table, outputObjs, columns = colsToAdd.map(_.name).toList.asJava)
 
+        case AlterTableChangeColumnCommand(tableName, columnName, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs, columns = Seq(columnName).toList.asJava)
+
         case AlterTableAddPartitionCommand(tableName, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
 

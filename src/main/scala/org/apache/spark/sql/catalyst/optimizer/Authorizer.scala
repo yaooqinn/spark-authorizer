@@ -98,6 +98,7 @@ object Authorizer extends Rule[LogicalPlan] {
       case c: Command => c match {
         case _: AnalyzeColumnCommand => HiveOperation.QUERY
         case _: AlterTableAddColumnsCommand => HiveOperation.ALTERTABLE_ADDCOLS
+        case _: AlterTableChangeColumnCommand => HiveOperation.ALTERTABLE_RENAMECOL
         case ExplainCommand(child, _, _, _) => logicalPlan2HiveOperation(child)
         case StreamingExplainCommand(qe, _) => logicalPlan2HiveOperation(qe.optimizedPlan)
         case _: LoadDataCommand => HiveOperation.LOAD
