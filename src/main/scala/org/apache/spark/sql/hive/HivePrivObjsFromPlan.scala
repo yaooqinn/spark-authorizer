@@ -183,6 +183,10 @@ private[sql] object HivePrivObjsFromPlan {
           }
           buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
+        case AnalyzeColumnCommand(tableIdent, columnNames) =>
+          addTableOrViewLevelObjs(tableIdent, inputObjs, columns = columnNames.toList.asJava)
+          addTableOrViewLevelObjs(tableIdent, outputObjs, columns = columnNames.toList.asJava)
+
         case AnalyzeTableCommand(tableName, _) =>
           val columns = new JAList[String]()
           columns.add("RAW__DATA__SIZE")
