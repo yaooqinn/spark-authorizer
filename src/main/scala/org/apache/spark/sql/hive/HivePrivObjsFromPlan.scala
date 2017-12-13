@@ -27,6 +27,7 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObje
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
+import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObjectHelper
 import org.apache.spark.sql.catalyst.plans.logical._
@@ -62,7 +63,29 @@ private[sql] object HivePrivObjsFromPlan {
       logicalPlan: LogicalPlan,
       hivePrivilegeObjects: JList[HivePrivilegeObject],
       hivePrivObjType: HivePrivilegeObjectType = HivePrivilegeObjectType.TABLE_OR_VIEW,
-      projectionList: Seq[NamedExpression] = Seq.empty): Unit = {
+      projectionList: Seq[NamedExpression] = null): Unit = {
+
+    /**
+     * Columns in Projection take priority for column level privilege checking
+     * @param table catalogTable of a given relation
+     */
+    def handleProjectionForRelation(table: CatalogTable): Unit = {
+      if (projectionList == null) {
+        addTableOrViewLevelObjs(
+          table.identifier,
+          hivePrivilegeObjects,
+          table.partitionColumnNames.asJava,
+          table.schema.fieldNames.toList.asJava)
+      } else if (projectionList.isEmpty) {
+        addTableOrViewLevelObjs(table.identifier, hivePrivilegeObjects)
+      } else {
+        addTableOrViewLevelObjs(
+          table.identifier,
+          hivePrivilegeObjects,
+          table.partitionColumnNames.filter(projectionList.map(_.name).contains(_)).asJava,
+          projectionList.map(_.name).asJava)
+      }
+    }
     logicalPlan match {
       case Project(projList, child) =>
         buildUnaryHivePrivObjs(
@@ -72,40 +95,10 @@ private[sql] object HivePrivObjsFromPlan {
           projList)
 
       case LogicalRelation(_, _, Some(table)) =>
-        val partKeys = if (projectionList.isEmpty) {
-          table.partitionColumnNames
-        } else {
-          table.partitionColumnNames.filter(projectionList.map(_.name).contains(_))
-        }
-        val fieldNames = if (projectionList.isEmpty) {
-          table.schema.fieldNames
-        } else {
-          table.schema.fieldNames.filter(projectionList.map(_.name).contains(_))
-        }
-
-        addTableOrViewLevelObjs(
-          table.identifier,
-          hivePrivilegeObjects,
-          partKeys.toList.asJava,
-          fieldNames.toList.asJava)
+        handleProjectionForRelation(table)
 
       case mr @ MetastoreRelation(_, _) =>
-        val partKeys = if (projectionList.isEmpty) {
-          mr.catalogTable.partitionColumnNames
-        } else {
-          mr.catalogTable.partitionColumnNames.filter(projectionList.map(_.prettyName).contains(_))
-        }
-        val fieldNames = if (projectionList.isEmpty) {
-          mr.catalogTable.schema.fieldNames
-        } else {
-          mr.catalogTable.schema.fieldNames.filter(projectionList.map(_.prettyName).contains(_))
-        }
-
-        addTableOrViewLevelObjs(
-          mr.catalogTable.identifier,
-          hivePrivilegeObjects,
-          partKeys.toList.asJava,
-          fieldNames.toList.asJava)
+        handleProjectionForRelation(mr.catalogTable)
 
       case UnresolvedRelation(tableIdentifier, _) =>
         // Normally, we shouldn't meet UnresolvedRelation here in an optimized plan.
