@@ -10,6 +10,10 @@
 Spark Authorizer is built using [Apache Maven](http://maven.apache.org). To build it, run:
 
 ```bash
+git clone https://github.com/yaooqinn/spark-authorizer.git
+cd spark-authorizer
+# choose a branch of your spark version
+git checkout spark-<spark.branch.version>
 mvn package
 ```
 

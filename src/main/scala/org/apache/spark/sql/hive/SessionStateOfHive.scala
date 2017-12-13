@@ -35,9 +35,6 @@ import org.apache.spark.util.Utils
  * Also, this will cause some issues with two [[SessionState]] instances in your application, such
  * as more mysql connections, `show tables` command may expose all tables including unexpected one.
  *
- * PS: For Spark 2.3 and later, because I've committed a PR to Apache Spark master branch which has
- * an side effect to expose a interface to reach it, I am able to make the inner [[SessionState]]
- * be reused.
  */
 private[sql] object SessionStateOfHive {
 
@@ -74,6 +71,10 @@ private[sql] object SessionStateOfHive {
     }
   }
 
+  /**
+   * Get SPARK_USER
+   * @return
+   */
   private def getCurrentUser: String = Utils.getCurrentUserName()
 
   /**
