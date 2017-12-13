@@ -53,12 +53,19 @@ private[sql] object SessionStateOfHive {
     conf
   }
 
-  private def isHiveSessionState(): Boolean = {
+  /**
+   * Only a given [[SparkSession]] backed by Hive will involve privilege checking
+   * @return
+   */
+  private def isHiveSessionState: Boolean = {
     sparkSession.sessionState.isInstanceOf[HiveSessionState]
   }
 
+  /**
+   * A Hive [[SessionState]] which holds the authenticator and authorizer
+   */
   private val state: Option[SessionState] = {
-    if (this.isHiveSessionState()) {
+    if (this.isHiveSessionState) {
       Option(SessionState.get()).orElse {
         Some(this.newState())
       }
@@ -67,11 +74,15 @@ private[sql] object SessionStateOfHive {
     }
   }
 
-  private def getCurrentUser(): String = Utils.getCurrentUserName()
+  private def getCurrentUser: String = Utils.getCurrentUserName()
 
+  /**
+   * Create a Hive [[SessionState]]
+   * @return
+   */
   private def newState(): SessionState = {
     val hiveConf = new HiveConf(hadoopConf, classOf[SessionState])
-    val state = new SessionState(hiveConf, this.getCurrentUser())
+    val state = new SessionState(hiveConf, this.getCurrentUser)
     SessionState.start(state)
     state
   }

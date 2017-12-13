@@ -31,7 +31,7 @@ import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObjectHelper
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.command._
-import org.apache.spark.sql.execution.datasources.{CreateTable, InsertIntoDataSourceCommand, LogicalRelation}
+import org.apache.spark.sql.execution.datasources.{CreateTable, InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand, LogicalRelation}
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 
 /**
@@ -43,23 +43,31 @@ private[sql] object HivePrivObjsFromPlan {
     val inputObjs = new JAList[HivePrivilegeObject]
     val outputObjs = new JAList[HivePrivilegeObject]
     logicalPlan match {
-      case cmd: Command => buildInOutHivePrivObject(cmd, inputObjs, outputObjs)
-      case iit: InsertIntoTable => buildInOutHivePrivObject(iit, inputObjs, outputObjs)
-      case _ => buildInputHivePrivObjs(logicalPlan, inputObjs)
+      // CreateTable / RunnableCommand
+      case cmd: Command => buildBinaryHivePrivObject(cmd, inputObjs, outputObjs)
+      case iit: InsertIntoTable => buildBinaryHivePrivObject(iit, inputObjs, outputObjs)
+      case _ => buildUnaryHivePrivObjs(logicalPlan, inputObjs)
     }
     (inputObjs, outputObjs)
   }
 
-  private def buildInputHivePrivObjs(
+  /**
+   * Build HivePrivilegeObjects from Spark LogicalPlan
+   * @param logicalPlan a Spark LogicalPlan used to generate HivePrivilegeObjects
+   * @param hivePrivilegeObjects input or output hive privilege object list
+   * @param hivePrivObjType Hive Privilege Object Type
+   * @param projectionList Projection list after pruning
+   */
+  private def buildUnaryHivePrivObjs(
       logicalPlan: LogicalPlan,
-      inputObjs: JList[HivePrivilegeObject],
+      hivePrivilegeObjects: JList[HivePrivilegeObject],
       hivePrivObjType: HivePrivilegeObjectType = HivePrivilegeObjectType.TABLE_OR_VIEW,
       projectionList: Seq[NamedExpression] = Seq.empty): Unit = {
     logicalPlan match {
       case Project(projList, child) =>
-        buildInputHivePrivObjs(
+        buildUnaryHivePrivObjs(
           child,
-          inputObjs,
+          hivePrivilegeObjects,
           HivePrivilegeObjectType.TABLE_OR_VIEW,
           projList)
 
@@ -77,7 +85,7 @@ private[sql] object HivePrivObjsFromPlan {
 
         addTableOrViewLevelObjs(
           table.identifier,
-          inputObjs,
+          hivePrivilegeObjects,
           partKeys.toList.asJava,
           fieldNames.toList.asJava)
 
@@ -95,7 +103,7 @@ private[sql] object HivePrivObjsFromPlan {
 
         addTableOrViewLevelObjs(
           mr.catalogTable.identifier,
-          inputObjs,
+          hivePrivilegeObjects,
           partKeys.toList.asJava,
           fieldNames.toList.asJava)
 
@@ -104,25 +112,31 @@ private[sql] object HivePrivObjsFromPlan {
         // Unfortunately, the real world is always a place where miracles happen.
         // We check the privileges directly without resolving the plan and leave everything
         // to spark to do.
-        addTableOrViewLevelObjs(tableIdentifier, inputObjs)
+        addTableOrViewLevelObjs(tableIdentifier, hivePrivilegeObjects)
 
       case bn: BinaryNode =>
-        buildInputHivePrivObjs(bn.left, inputObjs, hivePrivObjType, projectionList)
-        buildInputHivePrivObjs(bn.right, inputObjs, hivePrivObjType, projectionList)
+        buildUnaryHivePrivObjs(bn.left, hivePrivilegeObjects, hivePrivObjType, projectionList)
+        buildUnaryHivePrivObjs(bn.right, hivePrivilegeObjects, hivePrivObjType, projectionList)
 
       case un: UnaryNode =>
-        buildInputHivePrivObjs(un.child, inputObjs, hivePrivObjType, projectionList)
+        buildUnaryHivePrivObjs(un.child, hivePrivilegeObjects, hivePrivObjType, projectionList)
 
       case Union(children) =>
         for (child <- children) {
-          buildInputHivePrivObjs(child, inputObjs, hivePrivObjType, projectionList)
+          buildUnaryHivePrivObjs(child, hivePrivilegeObjects, hivePrivObjType, projectionList)
         }
 
       case _ =>
     }
   }
 
-  private def buildInOutHivePrivObject(
+  /**
+   * Build HivePrivilegeObjects from Spark LogicalPlan
+   * @param logicalPlan a Spark LogicalPlan used to generate HivePrivilegeObjects
+   * @param inputObjs input hive privilege object list
+   * @param outputObjs output hive privilege object list
+   */
+  private def buildBinaryHivePrivObject(
       logicalPlan: LogicalPlan,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject]): Unit = {
@@ -131,8 +145,14 @@ private[sql] object HivePrivObjsFromPlan {
         addDbLevelObjs(tableDesc.identifier, outputObjs)
         addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, mode = mode)
         maybePlan.foreach {
-          buildInputHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildUnaryHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         }
+
+      case InsertIntoTable(table, _, child, _, _) =>
+        // table is a logical plan not catalogTable, so miss overwrite and partition info.
+        // TODO: deal with overwrite
+        buildUnaryHivePrivObjs(table, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+        buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
       case r: RunnableCommand => r match {
         case AlterDatabasePropertiesCommand(dbName, _) => addDbLevelObjs(dbName, outputObjs)
@@ -171,7 +191,7 @@ private[sql] object HivePrivObjsFromPlan {
             // it's a permanent view
             addTableOrViewLevelObjs(tableIdentifier, outputObjs)
           }
-          buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case AnalyzeTableCommand(tableName, _) =>
           val columns = new JAList[String]()
@@ -180,7 +200,7 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case CacheTableCommand(_, plan, _) =>
-          plan.foreach {buildInputHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)}
+          plan.foreach {buildUnaryHivePrivObjs(_, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)}
 
         case CreateDatabaseCommand(databaseName, _, _, _, _) =>
           addDbLevelObjs(databaseName, outputObjs)
@@ -188,7 +208,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateDataSourceTableAsSelectCommand(table, mode, child) =>
           addDbLevelObjs(table.identifier, outputObjs)
           addTableOrViewLevelObjs(table.identifier, outputObjs, mode = mode)
-          buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case CreateDataSourceTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
@@ -200,7 +220,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateHiveTableAsSelectCommand(tableDesc, child, _) =>
           addDbLevelObjs(tableDesc.identifier, outputObjs)
           addTableOrViewLevelObjs(tableDesc.identifier, outputObjs)
-          buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case CreateTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
@@ -221,7 +241,7 @@ private[sql] object HivePrivObjsFromPlan {
               addTableOrViewLevelObjs(viewName, outputObjs)
             case _ =>
           }
-          buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case DescribeDatabaseCommand(databaseName, _) =>
           addDbLevelObjs(databaseName, inputObjs)
@@ -244,14 +264,25 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case ExplainCommand(child, _, _) =>
-          buildInOutHivePrivObject(child, inputObjs, outputObjs)
+          buildBinaryHivePrivObject(child, inputObjs, outputObjs)
 
         case InsertIntoDataSourceCommand(logicalRelation, child, overwrite) =>
           logicalRelation.catalogTable.foreach { table =>
             addTableOrViewLevelObjs(
               table.identifier, outputObjs, mode = overwriteToSaveMode(overwrite.enabled))
           }
-          buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+        case InsertIntoHadoopFsRelationCommand(_, _, _, partCols, _, _, _, _, child, mode, table) =>
+          table foreach { t =>
+            addTableOrViewLevelObjs(
+              t.identifier,
+              outputObjs,
+              partCols.map(_.name).toList.asJava,
+              t.schema.fieldNames.toList.asJava,
+              mode)
+          }
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case LoadDataCommand(table, _, _, isOverwrite, _) =>
           addTableOrViewLevelObjs(table, outputObjs, mode = overwriteToSaveMode(isOverwrite))
@@ -277,7 +308,6 @@ private[sql] object HivePrivObjsFromPlan {
         // AddJarCommand
         // AnalyzeColumnCommand
         // CreateTempViewUsing
-        // InsertIntoHadoopFsRelationCommand
         // ListFilesCommand
         // ListJarsCommand
         // RefreshTable
@@ -294,54 +324,60 @@ private[sql] object HivePrivObjsFromPlan {
 
   /**
    * Add database level hive privilege objects to input or output list
-   * @param dbName
-   * @param objs input or output list
+   * @param dbName database name as hive privilege object
+   * @param hivePrivilegeObjects input or output list
    */
-  private def addDbLevelObjs(dbName: String, objs: JList[HivePrivilegeObject]): Unit = {
-    objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
+  private def addDbLevelObjs(
+      dbName: String,
+      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+    hivePrivilegeObjects.add(
+      HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
   /**
    * Add database level hive privilege objects to input or output list
-   * @param dbOption
-   * @param objs
+   * @param dbOption an option of database name as hive privilege object
+   * @param hivePrivilegeObjects input or output hive privilege object list
    */
   private def addDbLevelObjs(
       dbOption: Option[String],
-      objs: JList[HivePrivilegeObject]): Unit = {
-    val dbName = dbOption.getOrElse(this.getCurrentDatabase())
-    objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
+      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+    val dbName = dbOption.getOrElse(this.getCurrentDatabase)
+    hivePrivilegeObjects.add(
+      HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
   /**
    * Add database level hive privilege objects to input or output list
-   * @param tableIdentifier
-   * @param objs
+   * @param tableIdentifier table identifier contains database name as hive privilege object
+   * @param hivePrivilegeObjects input or output hive privilege object list
    */
   private def addDbLevelObjs(
       tableIdentifier: TableIdentifier,
-      objs: JList[HivePrivilegeObject]): Unit = {
-    val dbName = tableIdentifier.database.getOrElse(this.getCurrentDatabase())
-    objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
+      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+    val dbName = tableIdentifier.database.getOrElse(this.getCurrentDatabase)
+    hivePrivilegeObjects.add(
+      HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
   /**
    * Add table level hive privilege objects to input or output list
-   * @param tableName
-   * @param objs input or output list
-   * @param mode
+   * @param tableIdentifier table identifier contains database name, and table name as hive
+   *                        privilege object
+   * @param hivePrivilegeObjects input or output list
+   * @param mode Append or overwrite
    */
   private def addTableOrViewLevelObjs(
-      tableName: TableIdentifier,
-      objs: JList[HivePrivilegeObject],
+      tableIdentifier: TableIdentifier,
+      hivePrivilegeObjects: JList[HivePrivilegeObject],
       partKeys: JList[String] = null,
       columns: JList[String] = null,
       mode: SaveMode = SaveMode.ErrorIfExists,
       cmdParams: JList[String] = null): Unit = {
-    val dbName = tableName.database.getOrElse(this.getCurrentDatabase())
-    val tbName = tableName.table
+    val dbName = tableIdentifier.database.getOrElse(this.getCurrentDatabase)
+    val tbName = tableIdentifier.table
     val hivePrivObjectActionType = getHivePrivObjActionType(mode)
-    objs.add(
+    hivePrivilegeObjects.add(
       HivePrivilegeObjectHelper(
         HivePrivilegeObjectType.TABLE_OR_VIEW,
         dbName,
@@ -354,24 +390,25 @@ private[sql] object HivePrivObjsFromPlan {
 
   /**
    * Add function level hive privilege objects to input or output list
-   * @param databaseName
-   * @param functionName
-   * @param objs input or output list
+   * @param databaseName database name
+   * @param functionName function name as hive privilege object
+   * @param hivePrivilegeObjects input or output list
    */
   private def addFunctionLevelObjs(
       databaseName: Option[String],
       functionName: String,
-      objs: JList[HivePrivilegeObject]): Unit = {
-    val dbName = databaseName.getOrElse(this.getCurrentDatabase())
-    objs.add(HivePrivilegeObjectHelper(HivePrivilegeObjectType.FUNCTION, dbName, functionName))
+      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+    val dbName = databaseName.getOrElse(this.getCurrentDatabase)
+    hivePrivilegeObjects.add(
+      HivePrivilegeObjectHelper(HivePrivilegeObjectType.FUNCTION, dbName, functionName))
   }
 
   /**
-    * HivePrivObjectActionType INSERT or INSERT_OVERWRITE
-    *
-    * @param mode
-    * @return
-    */
+   * HivePrivObjectActionType INSERT or INSERT_OVERWRITE
+   *
+   * @param mode Append or Overwrite
+   * @return
+   */
   private def getHivePrivObjActionType(mode: SaveMode): HivePrivObjectActionType = {
     mode match {
       case SaveMode.Append => HivePrivObjectActionType.INSERT
@@ -382,7 +419,7 @@ private[sql] object HivePrivObjsFromPlan {
 
   /**
    * HivePrivObjectActionType INSERT or INSERT_OVERWRITE
-   * @param overwrite
+   * @param overwrite Append or overwrite
    * @return
    */
   private def overwriteToSaveMode(overwrite: Boolean): SaveMode = {
@@ -397,7 +434,7 @@ private[sql] object HivePrivObjsFromPlan {
    * Get the current database
    * @return
    */
-  private def getCurrentDatabase(): String = {
+  private def getCurrentDatabase: String = {
     SessionStateOfHive().get.getCurrentDatabase
   }
 }

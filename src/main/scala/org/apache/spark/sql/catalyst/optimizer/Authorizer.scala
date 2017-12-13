@@ -47,7 +47,7 @@ object Authorizer extends Rule[LogicalPlan] {
    * ranger-hive-plugins.
    * If the user is authorized, then the original plan will be returned; otherwise, interrupted by
    * some particular privilege exceptions.
-   * @param plan
+   * @param plan a spark LogicalPlan for verifying privileges
    * @return a plan itself which has gone through the privilege check.
    */
   override def apply(plan: LogicalPlan): LogicalPlan = {
@@ -90,7 +90,7 @@ object Authorizer extends Rule[LogicalPlan] {
 
   /**
     * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
-    * @param logicalPlan
+    * @param logicalPlan a spark LogicalPlan
     * @return
     */
   private def logicalPlan2HiveOperation(logicalPlan: LogicalPlan): HiveOperation = {
@@ -98,9 +98,9 @@ object Authorizer extends Rule[LogicalPlan] {
       case c: Command => c match {
         case ExplainCommand(child, _, _) => logicalPlan2HiveOperation(child)
         case StreamingExplainCommand(qe, _) => logicalPlan2HiveOperation(qe.optimizedPlan)
-        case _: LoadDataCommand
-             | _: InsertIntoHadoopFsRelationCommand
-             | _: InsertIntoDataSourceCommand => HiveOperation.LOAD
+        case _: LoadDataCommand => HiveOperation.LOAD
+        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
+        case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
         case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
         case _: DropDatabaseCommand => HiveOperation.DROPDATABASE
         case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
