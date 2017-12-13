@@ -147,6 +147,10 @@ private[sql] object HivePrivObjsFromPlan {
       case r: RunnableCommand => r match {
         case AlterDatabasePropertiesCommand(dbName, _) => addDbLevelObjs(dbName, outputObjs)
 
+        case AlterTableAddColumnsCommand(table, colsToAdd) =>
+          addTableOrViewLevelObjs(table, inputObjs, columns = colsToAdd.map(_.name).toList.asJava)
+          addTableOrViewLevelObjs(table, outputObjs, columns = colsToAdd.map(_.name).toList.asJava)
+
         case AlterTableAddPartitionCommand(tableName, _, _) =>
           addTableOrViewLevelObjs(tableName, outputObjs)
 
