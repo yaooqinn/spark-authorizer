@@ -244,7 +244,7 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case ExplainCommand(child, _, _) =>
-          buildInputHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildInOutHivePrivObject(child, inputObjs, outputObjs)
 
         case InsertIntoDataSourceCommand(logicalRelation, child, overwrite) =>
           logicalRelation.catalogTable.foreach { table =>
