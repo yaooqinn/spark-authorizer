@@ -301,7 +301,7 @@ private[sql] object HivePrivObjsFromPlan {
 
         case ShowTablesCommand(db, _) => addDbLevelObjs(db, inputObjs)
 
-        case TruncateTableCommand(tableName, _) => addTableOrViewLevelObjs(tableName, inputObjs)
+        case TruncateTableCommand(tableName, _) => addTableOrViewLevelObjs(tableName, outputObjs)
 
         case _ =>
         // AddFileCommand
