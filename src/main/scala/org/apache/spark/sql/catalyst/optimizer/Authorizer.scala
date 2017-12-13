@@ -21,6 +21,7 @@ import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType}
 import org.apache.hadoop.hive.ql.session.SessionState
 
+import org.apache.spark.sql.catalyst.SQLBuilder
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
@@ -55,7 +56,7 @@ object Authorizer extends Rule[LogicalPlan] {
       state.setIsHiveServerQuery(true)
       val hiveOperationType = toHiveOperationType(plan)
       val (in, out) = HivePrivObjsFromPlan(plan)
-      val hiveAuthzContext = getHiveAuthzContext(plan, state, "")
+      val hiveAuthzContext = getHiveAuthzContext(plan, state)
       Option(state.getAuthorizerV2) match {
         case Some(authz) =>
           try {
@@ -170,14 +171,21 @@ object Authorizer extends Rule[LogicalPlan] {
   def getHiveAuthzContext(
       logicalPlan: LogicalPlan,
       state: SessionState,
-      command: String): HiveAuthzContext = {
+      command: Option[String] = None): HiveAuthzContext = {
     val authzContextBuilder = new HiveAuthzContext.Builder()
     // set the ip address for user running the query, only for HiveServer2, Spark Applications
     // is more like the HiveServer2 itself, so I am just setting this for fun..
     authzContextBuilder.setUserIpAddress(state.getUserIpAddress)
     // set the sql query string, [[LogicalPlan]] contains such information in 2.2 or higher version
     // so this is for evolving..
-    authzContextBuilder.setCommandString(command)
+    val cmd = command.getOrElse {
+      try {
+        new SQLBuilder(logicalPlan).toSQL
+      } catch {
+        case _: Exception => ""
+      }
+    }
+    authzContextBuilder.setCommandString(cmd)
     authzContextBuilder.build()
   }
 }
