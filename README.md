@@ -1,7 +1,17 @@
 
 # Spark Authorizer
 
-**Spark Authorizer** provides SQL Standard Authorization for Apache Spark.
+**Spark Authorizer** provides you with *SQL Standard ased Authorization* for [Apache Spark™](http://spark.apache.org) 
+like [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
+While you are using Spark SQL or Dataset/DataFrame API to load data from tables embedded with [Apache Hive™](https://hive.apache.org) metastore, 
+this library provides row/column level fine-grained access controls with [Apache Ranger™](https://ranger.apache.org).
+
+Security is one of fundamental features for enterprise adoption. [Apache Ranger™](https://ranger.apache.org) offers many security plugins for many Hadoop ecosystem components, 
+such as HDFS, Hive, HBase, Solr and Sqoop2. However, [Apache Spark™](http://spark.apache.org) is not counted in yet. 
+When a secured HDFS cluster is used as a data warehouse accessed by various users and groups via different applications wrote by Spark and Hive, 
+it is very difficult to guarantee data management in a consistent way.  Apache Spark users visit data warehouse only 
+with Storage based access controls offered by HDFS. This library shares [Ranger Hive plugin](https://cwiki.apache.org/confluence/display/RANGER/Apache+Ranger+0.5.0+Installation#ApacheRanger0.5.0Installation-InstallingApacheHive(1.2.0)) 
+with Hive to help Spark talking to Ranger Admin. 
 
 ---
 
@@ -16,6 +26,14 @@ cd spark-authorizer
 git checkout spark-<spark.branch.version>
 mvn package
 ```
+
+## Specifying Spark Authorization for Apache Spark
+
+|Branch| Spark Version| Notes|
+|:---:|:---:|:---:|
+|master|master|periodically update to catch up|
+|spark-2.2|2.2.1| - |
+|spark-2.1|2.1.2| - |
 
 ---
 
@@ -56,7 +74,7 @@ It's good for us to do authorization after column pruning.
 
 Your may notice that it only shut the door for men with a noble character but leave the door open for the scheming ones.
 
-To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/v2.2.1/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
+To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
 
 
 ```scala
