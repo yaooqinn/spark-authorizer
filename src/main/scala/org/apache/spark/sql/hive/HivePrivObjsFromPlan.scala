@@ -27,13 +27,14 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObje
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
-import org.apache.spark.sql.catalyst.catalog.CatalogTable
+import org.apache.spark.sql.catalyst.catalog.{CatalogTable, HiveTableRelation, UnresolvedCatalogRelation}
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
 import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObjectHelper
 import org.apache.spark.sql.catalyst.plans.logical._
+import org.apache.spark.sql.execution.columnar.InMemoryRelation
 import org.apache.spark.sql.execution.command._
-import org.apache.spark.sql.execution.datasources.{CreateTable, InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand, LogicalRelation}
-import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
+import org.apache.spark.sql.execution.datasources._
+import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveTable}
 
 /**
  * [[LogicalPlan]] -> list of [[HivePrivilegeObject]]s
@@ -86,6 +87,7 @@ private[sql] object HivePrivObjsFromPlan {
           projectionList.map(_.name).asJava)
       }
     }
+
     logicalPlan match {
       case Project(projList, child) =>
         buildUnaryHivePrivObjs(
@@ -93,6 +95,10 @@ private[sql] object HivePrivObjsFromPlan {
           hivePrivilegeObjects,
           HivePrivilegeObjectType.TABLE_OR_VIEW,
           projList)
+      case HiveTableRelation(tableMeta, _, _) =>
+        handleProjectionForRelation(tableMeta)
+      case _: InMemoryRelation =>
+        // TODO: should take case of its child SparkPlan's underlying relation
 
       case LogicalRelation(_, _, Some(table)) =>
         handleProjectionForRelation(table)
@@ -103,6 +109,12 @@ private[sql] object HivePrivObjsFromPlan {
         // We check the privileges directly without resolving the plan and leave everything
         // to spark to do.
         addTableOrViewLevelObjs(tableIdentifier, hivePrivilegeObjects)
+
+      case UnresolvedCatalogRelation(tableMeta) =>
+        handleProjectionForRelation(tableMeta)
+
+      case View(_, output, child) =>
+        buildUnaryHivePrivObjs(child, hivePrivilegeObjects, hivePrivObjType, output)
 
       case bn: BinaryNode =>
         buildUnaryHivePrivObjs(bn.left, hivePrivilegeObjects, hivePrivObjType, projectionList)
@@ -293,8 +305,17 @@ private[sql] object HivePrivObjsFromPlan {
           }
           buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
+        case InsertIntoHiveTable(table, _, child, overwrite, _) =>
+          addTableOrViewLevelObjs(
+            table.identifier, outputObjs, mode = overwriteToSaveMode(overwrite))
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
         case LoadDataCommand(table, _, _, isOverwrite, _) =>
           addTableOrViewLevelObjs(table, outputObjs, mode = overwriteToSaveMode(isOverwrite))
+
+        case SaveIntoDataSourceCommand(child, _, _, _, _) =>
+          // TODO: mode missing
+          buildUnaryHivePrivObjs(child, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case SetDatabaseCommand(databaseName) => addDbLevelObjs(databaseName, inputObjs)
 

@@ -24,9 +24,9 @@ import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
-import org.apache.spark.sql.execution.datasources.{CreateTable, CreateTempViewUsing, InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand}
+import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive.{HivePrivObjsFromPlan, SessionStateOfHive}
-import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
+import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveTable}
 
 /**
  * Do Hive Authorizing V2, with `Apache Ranger` ranger-hive-plugin well configured,
@@ -102,8 +102,9 @@ object Authorizer extends Rule[LogicalPlan] {
         case ExplainCommand(child, _, _, _) => logicalPlan2HiveOperation(child)
         case StreamingExplainCommand(qe, _) => logicalPlan2HiveOperation(qe.optimizedPlan)
         case _: LoadDataCommand => HiveOperation.LOAD
-        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
         case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
+        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
+        case _: InsertIntoHiveTable => HiveOperation.QUERY
         case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
         case _: DropDatabaseCommand => HiveOperation.DROPDATABASE
         case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
@@ -152,9 +153,11 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: DescribeDatabaseCommand => HiveOperation.DESCDATABASE
         // case _: AlterViewAsCommand => HiveOperation.ALTERVIEW_AS
         case _: AlterViewAsCommand => HiveOperation.QUERY
+        case _: SaveIntoDataSourceCommand => HiveOperation.QUERY
         case _ =>
           // AddFileCommand
           // AddJarCommand
+          // ...
           HiveOperation.EXPLAIN
       }
       case _: InsertIntoTable => HiveOperation.QUERY
