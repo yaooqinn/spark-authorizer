@@ -111,6 +111,7 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
         case _: DropTableCommand => HiveOperation.DROPTABLE
         case _: DescribeTableCommand => HiveOperation.DESCTABLE
+        case _: DescribeColumnCommand => HiveOperation.DESCTABLE
         case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
         case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
         case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART

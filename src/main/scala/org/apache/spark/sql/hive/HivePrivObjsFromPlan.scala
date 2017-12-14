@@ -264,6 +264,9 @@ private[sql] object HivePrivObjsFromPlan {
           }
           buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
+        case DescribeColumnCommand(table, colNameParts, _) =>
+          addTableOrViewLevelObjs(table, inputObjs, columns = colNameParts.toList.asJava)
+
         case DescribeDatabaseCommand(databaseName, _) =>
           addDbLevelObjs(databaseName, inputObjs)
 
