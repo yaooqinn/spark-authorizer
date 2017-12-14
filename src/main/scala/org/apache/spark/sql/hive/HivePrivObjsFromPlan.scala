@@ -155,12 +155,15 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(tableName, inputObjs, columns = Seq(columnName).toList.asJava)
 
         case AlterTableAddPartitionCommand(tableName, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableDropPartitionCommand(tableName, _, _, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableRecoverPartitionsCommand(tableName, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableRenameCommand(from, to, isView) if !isView || from.database.nonEmpty =>
@@ -169,18 +172,23 @@ private[sql] object HivePrivObjsFromPlan {
           addTableOrViewLevelObjs(to, outputObjs)
 
         case AlterTableRenamePartitionCommand(tableName, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableSerDePropertiesCommand(tableName, _, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableSetLocationCommand(tableName, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableSetPropertiesCommand(tableName, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterTableUnsetPropertiesCommand(tableName, _, _, _) =>
+          addTableOrViewLevelObjs(tableName, inputObjs)
           addTableOrViewLevelObjs(tableName, outputObjs)
 
         case AlterViewAsCommand(tableIdentifier, _, child) =>
