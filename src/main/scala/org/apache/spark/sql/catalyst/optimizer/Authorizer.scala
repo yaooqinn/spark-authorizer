@@ -26,7 +26,7 @@ import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive.{HivePrivObjsFromPlan, SessionStateOfHive}
-import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveTable}
+import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveDirCommand, InsertIntoHiveTable}
 
 /**
  * Do Hive Authorizing V2, with `Apache Ranger` ranger-hive-plugin well configured,
@@ -104,6 +104,7 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: LoadDataCommand => HiveOperation.LOAD
         case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
         case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
+        case _: InsertIntoHiveDirCommand => HiveOperation.QUERY
         case _: InsertIntoHiveTable => HiveOperation.QUERY
         case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
         case _: DropDatabaseCommand => HiveOperation.DROPDATABASE

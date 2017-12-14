@@ -34,7 +34,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.columnar.InMemoryRelation
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveTable}
+import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveDirCommand, InsertIntoHiveTable}
 
 /**
  * [[LogicalPlan]] -> list of [[HivePrivilegeObject]]s
@@ -303,6 +303,9 @@ private[sql] object HivePrivObjsFromPlan {
               t.schema.fieldNames.toList.asJava,
               mode)
           }
+          buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+        case InsertIntoHiveDirCommand(_, _, child, _) =>
           buildUnaryHivePrivObjs(child, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
         case InsertIntoHiveTable(table, _, child, overwrite, _) =>
