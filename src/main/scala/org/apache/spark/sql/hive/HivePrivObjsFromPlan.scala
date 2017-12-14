@@ -34,6 +34,7 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.columnar.InMemoryRelation
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
+import org.apache.spark.sql.execution.datasources.v2.WriteToDataSourceV2
 import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveDirCommand, InsertIntoHiveTable}
 
 /**
@@ -48,6 +49,7 @@ private[sql] object HivePrivObjsFromPlan {
       // CreateTable / RunnableCommand
       case cmd: Command => buildBinaryHivePrivObject(cmd, inputObjs, outputObjs)
       case iit: InsertIntoTable => buildBinaryHivePrivObject(iit, inputObjs, outputObjs)
+      case ct: CreateTable => buildBinaryHivePrivObject(ct, inputObjs, outputObjs)
       case _ => buildUnaryHivePrivObjs(logicalPlan, inputObjs)
     }
     (inputObjs, outputObjs)
@@ -115,6 +117,9 @@ private[sql] object HivePrivObjsFromPlan {
 
       case View(_, output, child) =>
         buildUnaryHivePrivObjs(child, hivePrivilegeObjects, hivePrivObjType, output)
+
+      case WriteToDataSourceV2(_, child) =>
+        buildUnaryHivePrivObjs(child, hivePrivilegeObjects, hivePrivObjType, projectionList)
 
       case bn: BinaryNode =>
         buildUnaryHivePrivObjs(bn.left, hivePrivilegeObjects, hivePrivObjType, projectionList)
