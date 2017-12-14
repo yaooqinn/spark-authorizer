@@ -100,7 +100,7 @@ private[sql] object HivePrivObjsFromPlan {
       case _: InMemoryRelation =>
         // TODO: should take case of its child SparkPlan's underlying relation
 
-      case LogicalRelation(_, _, Some(table)) =>
+      case LogicalRelation(_, _, Some(table), _) =>
         handleProjectionForRelation(table)
 
       case UnresolvedRelation(tableIdentifier) =>
@@ -234,7 +234,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateDataSourceTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs)
 
-        case CreateFunctionCommand(databaseName, functionName, _, _, false) =>
+        case CreateFunctionCommand(databaseName, functionName, _, _, false, _, _) =>
           addDbLevelObjs(databaseName, outputObjs)
           addFunctionLevelObjs(databaseName, functionName, outputObjs)
 
@@ -313,7 +313,7 @@ private[sql] object HivePrivObjsFromPlan {
         case LoadDataCommand(table, _, _, isOverwrite, _) =>
           addTableOrViewLevelObjs(table, outputObjs, mode = overwriteToSaveMode(isOverwrite))
 
-        case SaveIntoDataSourceCommand(child, _, _, _, _) =>
+        case SaveIntoDataSourceCommand(child, _, _, _) =>
           // TODO: mode missing
           buildUnaryHivePrivObjs(child, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 

@@ -17,43 +17,9 @@
 
 package org.apache.spark.sql.hive
 
-import org.apache.spark.sql.QueryTest
-import org.apache.spark.sql.catalyst.optimizer.Authorizer
-import org.apache.spark.sql.hive.test.TestHiveSingleton
-import org.apache.spark.sql.test.SQLTestUtils
-import org.apache.spark.util.Utils
-
 /**
  * TODO: Add UTs
  */
-class AuthorizerSuite extends QueryTest with SQLTestUtils with TestHiveSingleton {
-  import hiveContext._
+class AuthorizerSuite {
 
-  private val user = Utils.getCurrentUserName()
-
-  var jsonFilePath: String = _
-
-  override def beforeAll(): Unit = {
-    super.beforeAll()
-    jsonFilePath = Utils.getSparkClassLoader.getResource("sample.json").getFile
-  }
-
-  {
-    Seq("hive.security.authorization.enabled" -> "true",
-      "hive.security.authorization.createtable.owner.grants" -> "ALL").foreach { case (k, v) =>
-      spark.sparkContext.hadoopConfiguration.set(k, v)
-    }
-
-    spark.experimental.extraOptimizations ++= Seq(Authorizer)
-
-    hiveClient.runSqlHive("create role testrole")
-  }
-
-  private def hiveClient = sharedState.externalCatalog.asInstanceOf[HiveExternalCatalog].client
-
-  test("Hive security authorization enabled") {
-    assert(hiveClient.getConf("hive.security.authorization.enabled", "false") === "true")
-    assert(hiveClient.getConf("hive.security.authorization.createtable.owner.grants", "") === "ALL")
-
-  }
 }
