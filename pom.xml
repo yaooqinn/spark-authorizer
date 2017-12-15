@@ -22,9 +22,9 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.yaooqinn</groupId>
-    <artifactId>spark-authorizer-2.1</artifactId>
+    <artifactId>spark-authorizer</artifactId>
     <name>Spark Authorizer</name>
-    <version>1.0.0</version>
+    <version>1.0.0.spark2.1</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -40,7 +40,7 @@
             <id>yaooqinn</id>
             <name>Kent Yao</name>
             <email>hzyaoqin@corp.netease.com</email>
-            <organization>NetEase</organization>
+            <organization>yaooqinn</organization>
             <url>http://www.jianshu.com/u/14effefbbf32</url>
         </developer>
     </developers>
