@@ -1,6 +1,8 @@
 
 # Spark Authorizer
 
+[![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
+
 **Spark Authorizer** provides you with *SQL Standard ased Authorization* for [Apache Spark™](http://spark.apache.org) 
 like [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
 While you are using Spark SQL or Dataset/DataFrame API to load data from tables embedded with [Apache Hive™](https://hive.apache.org) metastore, 
