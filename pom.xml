@@ -21,7 +21,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.yaooqinn</groupId>
+    <groupId>yaooqinn</groupId>
     <artifactId>spark-authorizer</artifactId>
     <name>Spark Authorizer</name>
     <version>1.0.1.spark2.1-SNAPSHOT</version>
