@@ -48,6 +48,7 @@ private[sql] object HivePrivObjsFromPlan {
       // CreateTable / RunnableCommand
       case cmd: Command => buildBinaryHivePrivObject(cmd, inputObjs, outputObjs)
       case iit: InsertIntoTable => buildBinaryHivePrivObject(iit, inputObjs, outputObjs)
+      case ct: CreateTable => buildBinaryHivePrivObject(ct, inputObjs, outputObjs)
       case _ => buildUnaryHivePrivObjs(logicalPlan, inputObjs)
     }
     (inputObjs, outputObjs)
