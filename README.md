@@ -1,5 +1,5 @@
 
-# Spark Authorizer
+# [Spark Authorizer](https://spark-packages.org/package/yaooqinn/spark-authorizer)
 
 [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
 
@@ -195,3 +195,15 @@ res3: Array[org.apache.spark.sql.Row] = Array([1,AAAAAAAABAAAAAAA,1998-01-01,nul
 LOL...
 
 ---
+
+
+## Run as Spark Packages
+
+Spark Authorizer has been contributed to spark-packages.org. Now you can use this lib in a more convenient way.
+
+Include this package in your Spark Applications using: spark-shell, pyspark, or spark-submit
+
+For Spark 2.1.2
+```sbtshell
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.1
+```
