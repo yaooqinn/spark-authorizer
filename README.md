@@ -1,5 +1,5 @@
 
-- [Spark Authorizer](#[Spark-Authorizer](https://spark-packages.org/package/yaooqinn/spark-authorizer))
+- [Spark Authorizer](#Spark-Authorizer)
     - [Building Spark Authorizer](#Building-Spark-Authorizer)
     - [Specifying Spark Authorization for Apache Spark](#Specifying-Spark-Authorization-for-Apache-Spark)
     - [Installing Spark Authorizer to Spark](#Installing-Spark-Authorizer-to-Spark)
@@ -11,7 +11,7 @@
         - [Dataset/DataFrame](#Dataset/DataFrame)
     - [Run as Spark Packages](#Run-as-Spark-Packages)
 
-# [Spark Authorizer](https://spark-packages.org/package/yaooqinn/spark-authorizer)
+# Spark Authorizer
 
 [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
 
@@ -214,7 +214,7 @@ LOL...
 
 ## Run as Spark Packages
 
-Spark Authorizer has been contributed to ![spark-packages.org](https://spark-packages.org/static/img/logo.png)   
+Spark Authorizer has been contributed to [spark-packages.org](https://spark-packages.org)  
 
 Now you can use this lib in a more convenient way.
 
