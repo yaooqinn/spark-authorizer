@@ -1,16 +1,4 @@
 
-- [Spark Authorizer](#Spark-Authorizer)
-    - [Building Spark Authorizer](#Building-Spark-Authorizer)
-    - [Specifying Spark Authorization for Apache Spark](#Specifying-Spark-Authorization-for-Apache-Spark)
-    - [Installing Spark Authorizer to Spark](#Installing-Spark-Authorizer-to-Spark)
-    - [Interactive Spark Shell](#Interactive-Spark-Shell)
-    - [Suffer for the Authorization Pain](#Suffer-for-the-Authorization-Pain)
-        - [show databases](#show-databases)
-        - [switch database](#switch-database)
-        - [select](#select)
-        - [Dataset/DataFrame](#Dataset/DataFrame)
-    - [Run as Spark Packages](#Run-as-Spark-Packages)
-
 # Spark Authorizer
 
 [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
@@ -29,34 +17,62 @@ with Hive to help Spark talking to Ranger Admin.
 
 ---
 
-## Building Spark Authorizer
+## How to Use
 
-Spark Authorizer is built using [Apache Maven](http://maven.apache.org). To build it, run:
+#### With Spark Submit Arguments
+Spark Authorizer has been contributed to [spark-packages.org](https://spark-packages.org), see @ https://spark-packages.org/package/yaooqinn/spark-authorizer  
 
-```bash
-git clone https://github.com/yaooqinn/spark-authorizer.git
-cd spark-authorizer
-// choose a branch of your spark version
-git checkout spark-<spark.branch.version>
-mvn package
+Include this package in your Spark Applications using: spark-shell, pyspark, or spark-submit
+
+For Spark 2.1.2
+```shell
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.1
 ```
 
-## Specifying Spark Authorization for Apache Spark
+For Spark 2.2.1
+```shell
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.2
+```
 
-|Branch| Spark Version| Notes|
-|:---:|:---:|:---:|
-|master|master|periodically update to catch up|
-|spark-2.2|2.2.1| - |
-|spark-2.1|2.1.2| - |
+#### With Maven
+In your pom.xml, add:
+```xml
+<dependencies>
+  <!-- list of dependencies -->
+  <dependency>
+    <groupId>yaooqinn</groupId>
+    <artifactId>spark-authorizer</artifactId>
+    <version>1.0.0.spark2.1</version>
+  </dependency>
+</dependencies>
 
-Besides building the library of your own, you can get release versions at https://spark-packages.org/package/yaooqinn/spark-authorizer 
-or run spark applicaitons with `--packages`, see at [Run as Spark Packages](#Run-as-Spark-Packages)
+<repositories>
+  <!-- list of other repositories -->
+  <repository>
+    <id>SparkPackagesRepo</id>
+    <url>http://dl.bintray.com/spark-packages/maven</url>
+  </repository>
+</repositories>
+```
+#### Manually
+
+An Alternative way to use this library is to build it of your own.
+
+see [Building Spark Authorizer](docs/building-spark-authorizer.md)
+
+#### Specifying Spark Authorization for Apache Spark
+
+|Branch| Version |Spark Version| Notes|
+|:---:|:---:|:---:|:---:|
+|master|N/A|master|periodically update to catch up|
+|spark-2.2|1.0.0.spark2.2|2.2.1| - |
+|spark-2.1|1.0.0.spark2.1|2.1.2| - |
 
 ---
 
 ## Installing Spark Authorizer to Spark
 
-  1. `cp spark-authorizer-<version>.jar $SPARK_HOME/jars`
+  1. `cp spark-authorizer-<version>.jar $SPARK_HOME/jars`(only required when manually build this)
   2. install ranger-hive-plugin for spark
   3. configure you `hive-site.xml` and ranger configuration file, you may find an sample in `[./conf]`
 
@@ -113,11 +129,11 @@ Without modifying, you either control the spark session such as supplying a Thri
 ## Suffer for the Authorization Pain
 
 We create a ranger policy as below:
-![ranger-prolcy-details](./img/ranger-prolcy-details.png)
+![ranger-prolcy-details](docs/img/ranger-prolcy-details.png)
 
 Check Privilage with some simple cases.
 
-### show databases
+#### Show databases
 
 Actually, user [hzyaoqin] should only see only one privileged database -- tpcds_10g_ext, this is not a bug, 
 but a compromise not hacking Spark's source code
@@ -132,7 +148,7 @@ scala> spark.sql("show databases").show
 +--------------+
 ```
 
-### switch database
+### Switch database
 
 ```sql
 scala> spark.sql("use spark_test_db").show
@@ -158,7 +174,7 @@ scala> spark.sql("use tpcds_10g_ext").show
 LOL...
 
 
-### select 
+### Select 
 ```sql
 scala> spark.sql("select cp_type from catalog_page limit 1").show
 17/12/08 17:09:58 ERROR optimizer.Authorizer:
@@ -210,25 +226,3 @@ res3: Array[org.apache.spark.sql.Row] = Array([1,AAAAAAAABAAAAAAA,1998-01-01,nul
 LOL...
 
 ---
-
-
-## Run as Spark Packages
-
-Spark Authorizer has been contributed to [spark-packages.org](https://spark-packages.org)  
-
-Now you can use this lib in a more convenient way.
-
-Include this package in your Spark Applications using: spark-shell, pyspark, or spark-submit
-
-For Spark 2.1.2
-```shell
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.1
-```
-
-For Spark 2.2.1
-```shell
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.2
-```
-
-
-
