@@ -3,7 +3,7 @@
 
 [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
 
-**Spark Authorizer** provides you with *SQL Standard ased Authorization* for [Apache Spark™](http://spark.apache.org) 
+**Spark Authorizer** provides you with *SQL Standard Based Authorization* for [Apache Spark™](http://spark.apache.org) 
 like [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
 While you are using Spark SQL or Dataset/DataFrame API to load data from tables embedded with [Apache Hive™](https://hive.apache.org) metastore, 
 this library provides row/column level fine-grained access controls with [Apache Ranger™](https://ranger.apache.org).
@@ -36,6 +36,9 @@ mvn package
 |master|master|periodically update to catch up|
 |spark-2.2|2.2.1| - |
 |spark-2.1|2.1.2| - |
+
+Besides building the library of your own, you can get release versions at https://spark-packages.org/package/yaooqinn/spark-authorizer 
+or run spark applicaitons with `--packages`, see at [Run as Spark Packages](#Run as Spark Packages)
 
 ---
 
@@ -98,14 +101,14 @@ Without modifying, you either control the spark session such as supplying a Thri
 ## Suffer for the Authorization Pain
 
 We create a ranger policy as below:
-
 ![ranger-prolcy-details](./img/ranger-prolcy-details.png)
 
 Check Privilage with some simple cases.
 
 ### show database
 
-Actually, user [hzyaoqin] show only see only one database -- tpcds_10g_ext, this is not a bug, but a compromise not hacking 
+Actually, user [hzyaoqin] should only see only one privileged database -- tpcds_10g_ext, this is not a bug, 
+but a compromise not hacking Spark's source code
 ```sql
 scala> spark.sql("show databases").show
 +--------------+
@@ -199,11 +202,18 @@ LOL...
 
 ## Run as Spark Packages
 
-Spark Authorizer has been contributed to spark-packages.org. Now you can use this lib in a more convenient way.
+Spark Authorizer has been contributed to ![spark-packages.org](https://spark-packages.org/static/img/logo.png)   
+
+Now you can use this lib in a more convenient way.
 
 Include this package in your Spark Applications using: spark-shell, pyspark, or spark-submit
 
 For Spark 2.1.2
-```sbtshell
+```shell
 > $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.1
+```
+
+For Spark 2.2.1
+```shell
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.2
 ```
