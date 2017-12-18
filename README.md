@@ -1,4 +1,16 @@
 
+- [Spark Authorizer](#[Spark-Authorizer](https://spark-packages.org/package/yaooqinn/spark-authorizer))
+    - [Building Spark Authorizer](#Building-Spark-Authorizer)
+    - [Specifying Spark Authorization for Apache Spark](#Specifying-Spark-Authorization-for-Apache-Spark)
+    - [Installing Spark Authorizer to Spark](#Installing-Spark-Authorizer-to-Spark)
+    - [Interactive Spark Shell](#Interactive-Spark-Shell)
+    - [Suffer for the Authorization Pain](#Suffer-for-the-Authorization-Pain)
+        - [show databases](#show-databases)
+        - [switch database](#switch-database)
+        - [select](#select)
+        - [Dataset/DataFrame](#Dataset/DataFrame)
+    - [Run as Spark Packages](#Run-as-Spark-Packages)
+
 # [Spark Authorizer](https://spark-packages.org/package/yaooqinn/spark-authorizer)
 
 [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
@@ -24,7 +36,7 @@ Spark Authorizer is built using [Apache Maven](http://maven.apache.org). To buil
 ```bash
 git clone https://github.com/yaooqinn/spark-authorizer.git
 cd spark-authorizer
-# choose a branch of your spark version
+// choose a branch of your spark version
 git checkout spark-<spark.branch.version>
 mvn package
 ```
@@ -38,7 +50,7 @@ mvn package
 |spark-2.1|2.1.2| - |
 
 Besides building the library of your own, you can get release versions at https://spark-packages.org/package/yaooqinn/spark-authorizer 
-or run spark applicaitons with `--packages`, see at [Run as Spark Packages](#Run as Spark Packages)
+or run spark applicaitons with `--packages`, see at [Run as Spark Packages](#Run-as-Spark-Packages)
 
 ---
 
@@ -105,7 +117,7 @@ We create a ranger policy as below:
 
 Check Privilage with some simple cases.
 
-### show database
+### show databases
 
 Actually, user [hzyaoqin] should only see only one privileged database -- tpcds_10g_ext, this is not a bug, 
 but a compromise not hacking Spark's source code
@@ -217,3 +229,6 @@ For Spark 2.2.1
 ```shell
 > $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.2
 ```
+
+
+
