@@ -85,7 +85,6 @@ object Authorizer extends Rule[LogicalPlan] {
     logicalPlan match {
       case c: Command => c match {
         case ExplainCommand(child, _, _) => logicalPlan2HiveOperation(child)
-        case StreamingExplainCommand(qe, _) => logicalPlan2HiveOperation(qe.optimizedPlan)
         case _: LoadDataCommand => HiveOperation.LOAD
         case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
         case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
