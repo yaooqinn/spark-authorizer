@@ -18,14 +18,14 @@
 package org.apache.spark.sql.catalyst.optimizer
 
 import org.apache.hadoop.hive.ql.plan.HiveOperation
-import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType}
-import org.apache.hadoop.hive.ql.session.SessionState
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
 
+import org.apache.spark.sql.{Authorizable, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.hive.{HivePrivObjsFromPlan, SessionStateOfHive}
+import org.apache.spark.sql.hive.{DefaultAuthorizerImpl, HiveExternalCatalog, HivePrivObjsFromPlan}
 import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveTable}
 
 /**
@@ -51,42 +51,30 @@ object Authorizer extends Rule[LogicalPlan] {
    * @return a plan itself which has gone through the privilege check.
    */
   override def apply(plan: LogicalPlan): LogicalPlan = {
-    SessionStateOfHive().foreach { state =>
-      state.setIsHiveServerQuery(true)
-      val hiveOperationType = toHiveOperationType(plan)
-      val (in, out) = HivePrivObjsFromPlan(plan)
-      val hiveAuthzContext = getHiveAuthzContext(plan, state)
-      Option(state.getAuthorizerV2) match {
-        case Some(authz) =>
-          try {
-            authz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
-          } catch {
-            case hae: HiveAccessControlException =>
-              logError(
-                s"""
-                   |+===============================+
-                   ||Spark SQL Authorization Failure|
-                   ||-------------------------------|
-                   ||${hae.getMessage}
-                   ||-------------------------------|
-                   ||Spark SQL Authorization Failure|
-                   |+===============================+
-                 """.stripMargin)
-              throw hae
-            case e: Exception => throw e
-          }
-        case None =>
-          logWarning("Authorizer V2 not configured.")
-      }
-      // state
-      plan match {
-        case SetDatabaseCommand(databaseName) => state.setCurrentDatabase(databaseName)
-        case _ =>
-      }
+    val hiveOperationType = toHiveOperationType(plan)
+    val hiveAuthzContext = getHiveAuthzContext(plan)
+    SparkSession.getActiveSession match {
+      case Some(session) =>
+        session.sharedState.externalCatalog match {
+          case catalog: HiveExternalCatalog =>
+            catalog.client match {
+              case authz: Authorizable =>
+                val (in, out) = HivePrivObjsFromPlan.build(plan, authz.currentDatabase())
+                authz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
+              case _ =>
+                val (in, out) = HivePrivObjsFromPlan.build(plan, defaultAuthz.currentDatabase())
+                defaultAuthz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
+            }
+          case _ =>
+        }
+      case None =>
     }
+
     // We just return the original plan here, so this rule will be executed only once
     plan
   }
+
+  private lazy val defaultAuthz = new DefaultAuthorizerImpl
 
   /**
     * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
@@ -165,7 +153,7 @@ object Authorizer extends Rule[LogicalPlan] {
     }
   }
 
-  private def toHiveOperationType(logicalPlan: LogicalPlan): HiveOperationType = {
+  private[this] def toHiveOperationType(logicalPlan: LogicalPlan): HiveOperationType = {
     HiveOperationType.valueOf(logicalPlan2HiveOperation(logicalPlan).name())
   }
 
@@ -173,14 +161,10 @@ object Authorizer extends Rule[LogicalPlan] {
    * Provides context information in authorization check call that can be used for
    * auditing and/or authorization.
    */
-  def getHiveAuthzContext(
+  private[this] def getHiveAuthzContext(
       logicalPlan: LogicalPlan,
-      state: SessionState,
       command: Option[String] = None): HiveAuthzContext = {
     val authzContextBuilder = new HiveAuthzContext.Builder()
-    // set the ip address for user running the query, only for HiveServer2, Spark Applications
-    // is more like the HiveServer2 itself, so I am just setting this for fun..
-    authzContextBuilder.setUserIpAddress(state.getUserIpAddress)
     // set the sql query string, [[LogicalPlan]] contains such information in 2.2 or higher version
     // so this is for evolving..
     val cmd = command.getOrElse("")
