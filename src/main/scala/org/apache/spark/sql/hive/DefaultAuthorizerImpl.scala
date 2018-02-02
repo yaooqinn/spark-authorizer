@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *    http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,13 +17,21 @@
 
 package org.apache.spark.sql.hive
 
+import java.util.{List => JList}
+
+import scala.collection.JavaConverters._
+
 import org.apache.hadoop.hive.conf.HiveConf
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql.{Authorizable, SparkSession}
 import org.apache.spark.util.Utils
 
 /**
+ * Default Authorizer implementation.
+ *
  * The [[SessionState]] generates the authorizer and authenticator, we use these to check
  * the privileges of a Spark LogicalPlan, which is mapped to hive privilege objects and operation
  * type.
@@ -36,8 +44,7 @@ import org.apache.spark.util.Utils
  * as more mysql connections, `show tables` command may expose all tables including unexpected one.
  *
  */
-private[sql] object SessionStateOfHive {
-
+class DefaultAuthorizerImpl extends Authorizable with Logging {
   private def sparkSession =
     SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession).get
 
@@ -87,6 +94,50 @@ private[sql] object SessionStateOfHive {
     SessionState.start(state)
     state
   }
+  override def checkPrivileges(
+      hiveOpType: HiveOperationType,
+      inputObjs: JList[HivePrivilegeObject],
+      outputObjs: JList[HivePrivilegeObject],
+      context: HiveAuthzContext): Unit = {
+    state.foreach { s =>
+      s.setIsHiveServerQuery(true)
+      Option(s.getAuthorizerV2) match {
+        case Some(authz) =>
+          try {
+            authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
+          } catch {
+            case hae: HiveAccessControlException =>
+              logError(
+                s"""
+                   |+===============================+
+                   ||Spark SQL Authorization Failure|
+                   ||-------------------------------|
+                   ||${hae.getMessage}
+                   ||-------------------------------|
+                   ||Spark SQL Authorization Failure|
+                   |+===============================+
+                 """.stripMargin)
+              throw hae
+            case e: Exception => throw e
+          }
+        case None =>
+          logWarning("Authorizer V2 not configured.")
+      }
+      hiveOpType match {
+        case HiveOperationType.SWITCHDATABASE =>
+          inputObjs.asScala.foreach(o => s.setCurrentDatabase(o.getDbname))
+        case _ =>
+      }
+    }
+  }
 
-  def apply(): Option[SessionState] = state
+  /**
+   * get the current database name
+   *
+   * @return database name
+   */
+  override def currentDatabase(): String = {
+    require(state.nonEmpty)
+    state.get.getCurrentDatabase
+  }
 }
