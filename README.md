@@ -116,7 +116,7 @@ To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://gith
 to
 
 ```scala
-@volatile val extraOptimizations: Seq[Rule[LogicalPlan]] = Seq(Authorizer)
+val extraOptimizations: Seq[Rule[LogicalPlan]] = Seq(Authorizer)
 
 ```
 
