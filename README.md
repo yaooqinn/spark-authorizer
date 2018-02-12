@@ -116,11 +116,19 @@ To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://gith
 to
 
 ```scala
-val extraOptimizations: Seq[Rule[LogicalPlan]] = Seq(Authorizer)
+import scala.reflect.runtime.{universe => ru}
+private val rule = "org.apache.spark.sql.catalyst.optimizer.Authorizer"
+private val mirror = ru.runtimeMirror(Utils.getContextOrSparkClassLoader)
+private val clazz = mirror.staticModule(rule)
+private val module = mirror.reflectModule(clazz)
+@volatile var extraOptimizations: Seq[Rule[LogicalPlan]] = Seq(
+  module.instance.asInstanceOf[Rule[LogicalPlan]])
 
 ```
 
-Make extraOptimizations to a `val` to avoid reassignment.
+Use Scala Reflection to inject it into Spark extra Optimizations in case of maven cyclic dependency error cause failing in comiple Spark source code.
+
+Also, I suggest that make extraOptimizations to a `val` to avoid reassignment in which case you may have to fix some unit test too.
 
 Without modifying, you either control the spark session such as supplying a Thrift/JDBC Sever or hope for "Manner maketh Man"
 
