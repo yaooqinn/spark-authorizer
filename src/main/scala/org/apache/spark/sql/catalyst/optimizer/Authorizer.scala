@@ -85,12 +85,15 @@ object Authorizer extends Rule[LogicalPlan] {
     logicalPlan match {
       case c: Command => c match {
         case _: AnalyzeColumnCommand => HiveOperation.QUERY
+        case _: AnalyzePartitionCommand => HiveOperation.QUERY
         case _: AlterTableAddColumnsCommand => HiveOperation.ALTERTABLE_ADDCOLS
         case _: AlterTableChangeColumnCommand => HiveOperation.ALTERTABLE_RENAMECOL
-        case ExplainCommand(child, _, _, _) => logicalPlan2HiveOperation(child)
-        case StreamingExplainCommand(qe, _) => logicalPlan2HiveOperation(qe.optimizedPlan)
+        case e: ExplainCommand => logicalPlan2HiveOperation(e.logicalPlan)
+        case s: StreamingExplainCommand =>
+          logicalPlan2HiveOperation(s.queryExecution.optimizedPlan)
         case _: LoadDataCommand => HiveOperation.LOAD
         case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
+        case _: InsertIntoDataSourceDirCommand => HiveOperation.QUERY
         case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
         case _: InsertIntoHiveDirCommand => HiveOperation.QUERY
         case _: InsertIntoHiveTable => HiveOperation.QUERY
@@ -103,8 +106,8 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
         case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
         case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART
-        case AlterTableRenameCommand(_, _, isView) =>
-          if (!isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
+        case a: AlterTableRenameCommand =>
+          if (!a.isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
         case _: AlterTableDropPartitionCommand => HiveOperation.ALTERTABLE_DROPPARTS
         case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS
         case _: AlterTableSetPropertiesCommand
@@ -120,13 +123,13 @@ object Authorizer extends Rule[LogicalPlan] {
         case _: ShowCreateTableCommand => HiveOperation.SHOW_CREATETABLE
         case _: ShowFunctionsCommand => HiveOperation.SHOWFUNCTIONS
         case _: ShowPartitionsCommand => HiveOperation.SHOWPARTITIONS
-        case SetCommand(Some((_, None))) | SetCommand(None) => HiveOperation.SHOWCONF
+        case s: SetCommand if s.kv.isEmpty || s.kv.get._2.isEmpty => HiveOperation.SHOWCONF
         case _: CreateFunctionCommand => HiveOperation.CREATEFUNCTION
         // Hive don't check privileges for `drop function command`, what about a unverified user
         // try to drop functions.
         // We treat permanent functions as tables for verifying.
-        case DropFunctionCommand(_, _, _, false) => HiveOperation.DROPTABLE
-        case DropFunctionCommand(_, _, _, true) => HiveOperation.DROPFUNCTION
+        case d: DropFunctionCommand if !d.isTemp => HiveOperation.DROPTABLE
+        case d: DropFunctionCommand if d.isTemp => HiveOperation.DROPFUNCTION
         case _: CreateViewCommand
              | _: CacheTableCommand
              | _: CreateTempViewUsing => HiveOperation.CREATEVIEW

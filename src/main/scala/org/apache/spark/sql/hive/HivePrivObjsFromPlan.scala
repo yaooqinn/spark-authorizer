@@ -173,223 +173,243 @@ private[sql] object HivePrivObjsFromPlan {
         buildUnaryHivePrivObjs(table, currentDb, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
-      case r: RunnableCommand => r match {
-        case AlterDatabasePropertiesCommand(dbName, _) => addDbLevelObjs(dbName, outputObjs)
+      case a: AlterDatabasePropertiesCommand => addDbLevelObjs(a.databaseName, outputObjs)
 
-        case AlterTableAddColumnsCommand(table, colsToAdd) =>
+      case a: AlterTableAddColumnsCommand =>
+        addTableOrViewLevelObjs(
+          a.table, inputObjs, currentDb, columns = a.colsToAdd.map(_.name).toList.asJava)
+        addTableOrViewLevelObjs(
+          a.table, outputObjs, currentDb, columns = a.colsToAdd.map(_.name).toList.asJava)
+
+      case a: AlterTableAddPartitionCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableChangeColumnCommand =>
+        addTableOrViewLevelObjs(
+          a.tableName, inputObjs, currentDb, columns = Seq(a.columnName).toList.asJava)
+
+      case a: AlterTableDropPartitionCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableRecoverPartitionsCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableRenameCommand if !a.isView || a.oldName.database.nonEmpty =>
+        // rename tables / permanent views
+        addTableOrViewLevelObjs(a.oldName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.newName, outputObjs, currentDb)
+
+      case a: AlterTableRenamePartitionCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableSerDePropertiesCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableSetLocationCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableSetPropertiesCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterTableUnsetPropertiesCommand =>
+        addTableOrViewLevelObjs(a.tableName, inputObjs, currentDb)
+        addTableOrViewLevelObjs(a.tableName, outputObjs, currentDb)
+
+      case a: AlterViewAsCommand =>
+        if (a.name.database.nonEmpty) {
+          // it's a permanent view
+          addTableOrViewLevelObjs(a.name, outputObjs, currentDb)
+        }
+        buildUnaryHivePrivObjs(
+          a.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+      case a: AnalyzeColumnCommand =>
+        addTableOrViewLevelObjs(
+          a.tableIdent, inputObjs, currentDb, columns = a.columnNames.toList.asJava)
+        addTableOrViewLevelObjs(
+          a.tableIdent, outputObjs, currentDb, columns = a.columnNames.toList.asJava)
+
+      case a: AnalyzePartitionCommand =>
+        addTableOrViewLevelObjs(
+          a.tableIdent, inputObjs, currentDb)
+        addTableOrViewLevelObjs(
+          a.tableIdent, outputObjs, currentDb)
+
+      case a: AnalyzeTableCommand =>
+        val columns = new JAList[String]()
+        columns.add("RAW__DATA__SIZE")
+        addTableOrViewLevelObjs(a.tableIdent, inputObjs, currentDb, columns = columns)
+        addTableOrViewLevelObjs(a.tableIdent, outputObjs, currentDb)
+
+      case c: CacheTableCommand =>
+        c.plan.foreach {
+          buildUnaryHivePrivObjs(_, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+        }
+
+      case c: CreateDatabaseCommand =>
+        addDbLevelObjs(c.databaseName, outputObjs)
+
+      case c: CreateDataSourceTableAsSelectCommand =>
+        addDbLevelObjs(c.table.identifier, outputObjs, currentDb)
+        addTableOrViewLevelObjs(c.table.identifier, outputObjs, currentDb, mode = c.mode)
+        buildUnaryHivePrivObjs(
+          c.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+      case c: CreateDataSourceTableCommand =>
+        addTableOrViewLevelObjs(c.table.identifier, outputObjs, currentDb)
+
+      case c: CreateFunctionCommand if !c.isTemp =>
+        addDbLevelObjs(c.databaseName, outputObjs, currentDb)
+        addFunctionLevelObjs(c.databaseName, c.functionName, outputObjs, currentDb)
+
+      case c: CreateHiveTableAsSelectCommand =>
+        addDbLevelObjs(c.tableDesc.identifier, outputObjs, currentDb)
+        addTableOrViewLevelObjs(c.tableDesc.identifier, outputObjs, currentDb)
+        buildUnaryHivePrivObjs(
+          c.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+      case c: CreateTableCommand =>
+        addTableOrViewLevelObjs(c.table.identifier, outputObjs, currentDb)
+
+      case c: CreateTableLikeCommand =>
+        addDbLevelObjs(c.targetTable, outputObjs, currentDb)
+        addTableOrViewLevelObjs(c.targetTable, outputObjs, currentDb)
+        // hive don't handle source table's privileges, we should not obey that, because
+        // it will cause meta information leak
+        addDbLevelObjs(c.sourceTable, inputObjs, currentDb)
+        addTableOrViewLevelObjs(c.sourceTable, inputObjs, currentDb)
+
+      case c: CreateViewCommand =>
+        c.viewType match {
+          case PersistedView =>
+            // PersistedView will be tied to a database
+            addDbLevelObjs(c.name, outputObjs, currentDb)
+            addTableOrViewLevelObjs(c.name, outputObjs, currentDb)
+          case _ =>
+        }
+        buildUnaryHivePrivObjs(
+          c.child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+      case d: DescribeColumnCommand =>
+        addTableOrViewLevelObjs(
+          d.table, inputObjs, currentDb, columns = d.colNameParts.toList.asJava)
+
+      case d: DescribeDatabaseCommand =>
+        addDbLevelObjs(d.databaseName, inputObjs)
+
+      case d: DescribeFunctionCommand =>
+        addFunctionLevelObjs(
+          d.functionName.database, d.functionName.funcName, inputObjs, currentDb)
+
+      case d: DescribeTableCommand =>
+        addTableOrViewLevelObjs(d.table, inputObjs, currentDb)
+
+      case d: DropDatabaseCommand =>
+        // outputObjs are enough for privilege check, adding inputObjs for consistency with hive
+        // behaviour in case of some unexpected issues.
+        addDbLevelObjs(d.databaseName, inputObjs)
+        addDbLevelObjs(d.databaseName, outputObjs)
+
+      case d: DropFunctionCommand =>
+        addFunctionLevelObjs(d.databaseName, d.functionName, outputObjs, currentDb)
+
+      case d: DropTableCommand =>
+        addTableOrViewLevelObjs(d.tableName, outputObjs, currentDb)
+
+      case e: ExplainCommand =>
+        buildBinaryHivePrivObject(e.logicalPlan, currentDb, inputObjs, outputObjs)
+
+      case i: InsertIntoDataSourceCommand =>
+        i.logicalRelation.catalogTable.foreach { table =>
           addTableOrViewLevelObjs(
-            table, inputObjs, currentDb, columns = colsToAdd.map(_.name).toList.asJava)
+            table.identifier,
+            outputObjs,
+            currentDb,
+            mode = overwriteToSaveMode(i.overwrite))
+        }
+        buildUnaryHivePrivObjs(
+          i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+      case i: InsertIntoDataSourceDirCommand =>
+        buildUnaryHivePrivObjs(
+          i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+
+      case i: InsertIntoHadoopFsRelationCommand =>
+        i.catalogTable foreach { t =>
           addTableOrViewLevelObjs(
-            table, outputObjs, currentDb, columns = colsToAdd.map(_.name).toList.asJava)
+            t.identifier,
+            outputObjs,
+            currentDb,
+            i.partitionColumns.map(_.name).toList.asJava,
+            t.schema.fieldNames.toList.asJava,
+            i.mode)
+        }
+        buildUnaryHivePrivObjs(
+          i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
-        case AlterTableChangeColumnCommand(tableName, columnName, _) =>
-          addTableOrViewLevelObjs(
-            tableName, inputObjs, currentDb, columns = Seq(columnName).toList.asJava)
+      case i: InsertIntoHiveDirCommand =>
+        buildUnaryHivePrivObjs(
+          i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
-        case AlterTableAddPartitionCommand(tableName, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case i: InsertIntoHiveTable =>
+        addTableOrViewLevelObjs(
+          i.table.identifier, outputObjs, currentDb, mode = overwriteToSaveMode(i.overwrite))
+        buildUnaryHivePrivObjs(
+          i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
-        case AlterTableDropPartitionCommand(tableName, _, _, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case l: LoadDataCommand =>
+        addTableOrViewLevelObjs(
+          l.table, outputObjs, currentDb, mode = overwriteToSaveMode(l.isOverwrite))
 
-        case AlterTableRecoverPartitionsCommand(tableName, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case s: SaveIntoDataSourceCommand =>
+        // TODO: mode missing
+        buildUnaryHivePrivObjs(
+          s.query, currentDb, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
-        case AlterTableRenameCommand(from, to, isView) if !isView || from.database.nonEmpty =>
-          // rename tables / permanent views
-          addTableOrViewLevelObjs(from, inputObjs, currentDb)
-          addTableOrViewLevelObjs(to, outputObjs, currentDb)
+      case s: SetDatabaseCommand => addDbLevelObjs(s.databaseName, inputObjs)
 
-        case AlterTableRenamePartitionCommand(tableName, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case s: ShowColumnsCommand =>
+        addTableOrViewLevelObjs(s.tableName, inputObjs, currentDb)
 
-        case AlterTableSerDePropertiesCommand(tableName, _, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case s: ShowCreateTableCommand => addTableOrViewLevelObjs(s.table, inputObjs, currentDb)
 
-        case AlterTableSetLocationCommand(tableName, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case s: ShowFunctionsCommand => s.db.foreach(addDbLevelObjs(_, inputObjs))
 
-        case AlterTableSetPropertiesCommand(tableName, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case s: ShowPartitionsCommand => addTableOrViewLevelObjs(s.tableName, inputObjs, currentDb)
 
-        case AlterTableUnsetPropertiesCommand(tableName, _, _, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
+      case s: ShowTablePropertiesCommand =>
+        addTableOrViewLevelObjs(s.table, inputObjs, currentDb)
 
-        case AlterViewAsCommand(tableIdentifier, _, child) =>
-          if (tableIdentifier.database.nonEmpty) {
-            // it's a permanent view
-            addTableOrViewLevelObjs(tableIdentifier, outputObjs, currentDb)
-          }
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+      case s: ShowTablesCommand => addDbLevelObjs(s.databaseName, inputObjs, currentDb)
 
-        case AnalyzeColumnCommand(tableIdent, columnNames) =>
-          addTableOrViewLevelObjs(
-            tableIdent, inputObjs, currentDb, columns = columnNames.toList.asJava)
-          addTableOrViewLevelObjs(
-            tableIdent, outputObjs, currentDb, columns = columnNames.toList.asJava)
+      case s: TruncateTableCommand =>
+        addTableOrViewLevelObjs(s.tableName, outputObjs, currentDb)
 
-        case AnalyzeTableCommand(tableName, _) =>
-          val columns = new JAList[String]()
-          columns.add("RAW__DATA__SIZE")
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb, columns = columns)
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
 
-        case CacheTableCommand(_, plan, _) =>
-          plan.foreach {
-            buildUnaryHivePrivObjs(_, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-          }
-
-        case CreateDatabaseCommand(databaseName, _, _, _, _) =>
-          addDbLevelObjs(databaseName, outputObjs)
-
-        case CreateDataSourceTableAsSelectCommand(table, mode, child) =>
-          addDbLevelObjs(table.identifier, outputObjs, currentDb)
-          addTableOrViewLevelObjs(table.identifier, outputObjs, currentDb, mode = mode)
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case CreateDataSourceTableCommand(table, _) =>
-          addTableOrViewLevelObjs(table.identifier, outputObjs, currentDb)
-
-        case CreateFunctionCommand(databaseName, functionName, _, _, false, _, _) =>
-          addDbLevelObjs(databaseName, outputObjs, currentDb)
-          addFunctionLevelObjs(databaseName, functionName, outputObjs, currentDb)
-
-        case CreateHiveTableAsSelectCommand(tableDesc, child, _) =>
-          addDbLevelObjs(tableDesc.identifier, outputObjs, currentDb)
-          addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, currentDb)
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case CreateTableCommand(table, _) =>
-          addTableOrViewLevelObjs(table.identifier, outputObjs, currentDb)
-
-        case CreateTableLikeCommand(targetTable, sourceTable, _, _) =>
-          addDbLevelObjs(targetTable, outputObjs, currentDb)
-          addTableOrViewLevelObjs(targetTable, outputObjs, currentDb)
-          // hive don't handle source table's privileges, we should not obey that, because
-          // it will cause meta information leak
-          addDbLevelObjs(sourceTable, inputObjs, currentDb)
-          addTableOrViewLevelObjs(sourceTable, inputObjs, currentDb)
-
-        case CreateViewCommand(viewName, _, _, _, _, child, _, _, viewType) =>
-          viewType match {
-            case PersistedView =>
-              // PersistedView will be tied to a database
-              addDbLevelObjs(viewName, outputObjs, currentDb)
-              addTableOrViewLevelObjs(viewName, outputObjs, currentDb)
-            case _ =>
-          }
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case DescribeColumnCommand(table, colNameParts, _) =>
-          addTableOrViewLevelObjs(table, inputObjs, currentDb, columns = colNameParts.toList.asJava)
-
-        case DescribeDatabaseCommand(databaseName, _) =>
-          addDbLevelObjs(databaseName, inputObjs)
-
-        case DescribeFunctionCommand(functionName, _) =>
-          addFunctionLevelObjs(functionName.database, functionName.funcName, inputObjs, currentDb)
-
-        case DescribeTableCommand(table, _, _) =>
-          addTableOrViewLevelObjs(table, inputObjs, currentDb)
-
-        case DropDatabaseCommand(databaseName, _, _) =>
-          // outputObjs are enough for privilege check, adding inputObjs for consistency with hive
-          // behaviour in case of some unexpected issues.
-          addDbLevelObjs(databaseName, inputObjs)
-          addDbLevelObjs(databaseName, outputObjs)
-
-        case DropFunctionCommand(databaseName, functionName, _, _) =>
-          addFunctionLevelObjs(databaseName, functionName, outputObjs, currentDb)
-
-        case DropTableCommand(tableName, _, false, _) =>
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
-
-        case ExplainCommand(child, _, _, _) =>
-          buildBinaryHivePrivObject(child, currentDb, inputObjs, outputObjs)
-
-        case InsertIntoDataSourceCommand(logicalRelation, child, overwrite) =>
-          logicalRelation.catalogTable.foreach { table =>
-            addTableOrViewLevelObjs(
-              table.identifier, outputObjs, currentDb, mode = overwriteToSaveMode(overwrite))
-          }
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case i: InsertIntoHadoopFsRelationCommand =>
-          i.catalogTable foreach { t =>
-            addTableOrViewLevelObjs(
-              t.identifier,
-              outputObjs,
-              currentDb,
-              i.partitionColumns.map(_.name).toList.asJava,
-              t.schema.fieldNames.toList.asJava,
-              i.mode)
-          }
-          buildUnaryHivePrivObjs(
-            i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case i: InsertIntoHiveDirCommand =>
-          buildUnaryHivePrivObjs(
-            i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case i: InsertIntoHiveTable =>
-          addTableOrViewLevelObjs(
-            i.table.identifier, outputObjs, currentDb, mode = overwriteToSaveMode(i.overwrite))
-          buildUnaryHivePrivObjs(
-            i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case LoadDataCommand(table, _, _, isOverwrite, _) =>
-          addTableOrViewLevelObjs(
-            table, outputObjs, currentDb, mode = overwriteToSaveMode(isOverwrite))
-
-        case SaveIntoDataSourceCommand(child, _, _, _) =>
-          // TODO: mode missing
-          buildUnaryHivePrivObjs(
-            child, currentDb, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
-
-        case SetDatabaseCommand(databaseName) => addDbLevelObjs(databaseName, inputObjs)
-
-        case ShowColumnsCommand(_, tableName) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-
-        case ShowCreateTableCommand(table) => addTableOrViewLevelObjs(table, inputObjs, currentDb)
-
-        case ShowFunctionsCommand(db, _, _, _) => db.foreach(addDbLevelObjs(_, inputObjs))
-
-        case ShowPartitionsCommand(tableName, _) =>
-          addTableOrViewLevelObjs(tableName, inputObjs, currentDb)
-
-        case ShowTablePropertiesCommand(table, _) =>
-          addTableOrViewLevelObjs(table, inputObjs, currentDb)
-
-        case ShowTablesCommand(db, _, _, _) => addDbLevelObjs(db, inputObjs, currentDb)
-
-        case TruncateTableCommand(tableName, _) =>
-          addTableOrViewLevelObjs(tableName, outputObjs, currentDb)
-
-        case _ =>
-        // AddFileCommand
-        // AddJarCommand
-        // AnalyzeColumnCommand
-        // CreateTempViewUsing
-        // ListFilesCommand
-        // ListJarsCommand
-        // RefreshTable
-        // RefreshTable
-        // ResetCommand
-        // SetCommand
-        // ShowDatabasesCommand
-        // UncacheTableCommand
-      }
 
       case _ =>
+      // AddFileCommand
+      // AddJarCommand
+      // AnalyzeColumnCommand
+      // ClearCacheCommand
+      // CreateTempViewUsing
+      // ListFilesCommand
+      // ListJarsCommand
+      // RefreshTable
+      // RefreshTable
+      // ResetCommand
+      // SetCommand
+      // ShowDatabasesCommand
+      // StreamingExplainCommand
+      // UncacheTableCommand
+
     }
   }
 
