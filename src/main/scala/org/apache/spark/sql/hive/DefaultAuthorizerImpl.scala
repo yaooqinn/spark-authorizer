@@ -17,6 +17,7 @@
 
 package org.apache.spark.sql.hive
 
+import java.io.File
 import java.util.{List => JList}
 
 import scala.collection.JavaConverters._
@@ -54,6 +55,22 @@ class DefaultAuthorizerImpl extends Authorizable with Logging {
       .foreach { file =>
         Option(Utils.getContextOrSparkClassLoader.getResource(file)).foreach(conf.addResource)
       }
+
+    val dir = conf.get("ranger.plugin.hive.policy.cache.dir")
+    if (dir != null) {
+      val file = new File(dir)
+      if (!file.exists()) {
+        if (file.mkdirs()) {
+          logInfo("Creating ranger policy cache directory at " + file.getAbsolutePath)
+          file.deleteOnExit()
+        } else {
+          logWarning("Unable to create ranger policy cache directory at "
+            + file.getAbsolutePath)
+        }
+      } else {
+        logWarning("Ranger policy cache directory already exists")
+      }
+    }
     conf
   }
 
