@@ -24,14 +24,19 @@ Spark Authorizer has been contributed to [spark-packages.org](https://spark-pack
 
 Include this package in your Spark Applications using: spark-shell, pyspark, or spark-submit
 
-For Spark 2.1.2
+For Spark 2.1.x
 ```shell
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.1
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.1.1.spark2.1
 ```
 
-For Spark 2.2.1
+For Spark 2.2.x
 ```shell
 > $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.2
+```
+
+For Spark 2.3.x
+```shell
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.3
 ```
 
 #### With Maven
@@ -42,10 +47,9 @@ In your pom.xml, add:
   <dependency>
     <groupId>yaooqinn</groupId>
     <artifactId>spark-authorizer</artifactId>
-    <version>1.0.0.spark2.1</version>
+    <version>1.1.1.spark2.1</version>
   </dependency>
 </dependencies>
-
 <repositories>
   <!-- list of other repositories -->
   <repository>
@@ -53,7 +57,11 @@ In your pom.xml, add:
     <url>http://dl.bintray.com/spark-packages/maven</url>
   </repository>
 </repositories>
+
 ```
+
+**This may cause transitive dependency problem**
+
 #### Manually
 
 An Alternative way to use this library is to build it of your own.
@@ -62,11 +70,13 @@ see [Building Spark Authorizer](docs/building-spark-authorizer.md)
 
 #### Specifying Spark Authorization for Apache Spark
 
-|Branch| Version |Spark Version| Notes|
+|Branch| Latest Stable Version |Spark Version| Notes|
 |:---:|:---:|:---:|:---:|
 |master|N/A|master|periodically update to catch up|
-|spark-2.2|1.0.0.spark2.2|2.2.1| - |
-|spark-2.1|1.0.0.spark2.1|2.1.2| - |
+|spark-2.3|1.0.0.spark2.3|2.3.0| - |
+|spark-2.2|1.0.0.spark2.2|2.2.x| - |
+|spark-2.1|1.0.0.spark2.1|2.1.x| - |
+
 
 ---
 
