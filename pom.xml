@@ -24,7 +24,7 @@
     <groupId>yaooqinn</groupId>
     <artifactId>spark-authorizer</artifactId>
     <name>Spark Authorizer</name>
-    <version>1.0.0.spark2.3-SNAPSHOT</version>
+    <version>1.0.0.spark2.4-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -50,7 +50,7 @@
         <scala.version>2.11.8</scala.version>
         <scala.binary.version>2.11</scala.binary.version>
         <spark.group>org.apache.spark</spark.group>
-        <spark.version>2.3.0</spark.version>
+        <spark.version>2.4.0-SNAPSHOT</spark.version>
         <spark.scope>provided</spark.scope>
         <hive.group>org.spark-project.hive</hive.group>
         <hive.version>1.2.1.spark2</hive.version>
