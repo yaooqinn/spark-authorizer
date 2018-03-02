@@ -24,7 +24,7 @@
     <groupId>yaooqinn</groupId>
     <artifactId>spark-authorizer</artifactId>
     <name>Spark Authorizer</name>
-    <version>1.1.1.spark2.1</version>
+    <version>1.1.2.spark2.1</version>
     <packaging>jar</packaging>
 
     <licenses>
