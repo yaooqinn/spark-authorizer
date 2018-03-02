@@ -86,7 +86,7 @@ object Authorizer extends Rule[LogicalPlan] {
       case c: Command => c match {
         case ExplainCommand(child, _, _) => logicalPlan2HiveOperation(child)
         case _: LoadDataCommand => HiveOperation.LOAD
-        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
+        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.CREATETABLE_AS_SELECT
         case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
         case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
         case _: DropDatabaseCommand => HiveOperation.DROPDATABASE

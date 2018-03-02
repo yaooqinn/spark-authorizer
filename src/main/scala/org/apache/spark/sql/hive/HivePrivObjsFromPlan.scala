@@ -228,7 +228,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateDataSourceTableAsSelectCommand(table, mode, child) =>
           addDbLevelObjs(table.identifier, outputObjs, currentDb)
           addTableOrViewLevelObjs(table.identifier, outputObjs, currentDb, mode = mode)
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildBinaryHivePrivObject(child, currentDb, inputObjs, outputObjs)
 
         case CreateDataSourceTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs, currentDb)
@@ -240,7 +240,7 @@ private[sql] object HivePrivObjsFromPlan {
         case CreateHiveTableAsSelectCommand(tableDesc, child, _) =>
           addDbLevelObjs(tableDesc.identifier, outputObjs, currentDb)
           addTableOrViewLevelObjs(tableDesc.identifier, outputObjs, currentDb)
-          buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+          buildBinaryHivePrivObject(child, currentDb, inputObjs, outputObjs)
 
         case CreateTableCommand(table, _) =>
           addTableOrViewLevelObjs(table.identifier, outputObjs, currentDb)
