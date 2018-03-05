@@ -342,14 +342,18 @@ private[sql] object HivePrivObjsFromPlan {
           i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
       case i: InsertIntoHadoopFsRelationCommand =>
+        // we are able to get the override mode here, but ctas for hive table with text/orc
+        // format and parquet with spark.sql.hive.convertMetastoreParquet=false can success
+        // with privilege checking without claiming for UPDATE privilege of target table,
+        // which seems to be same with Hive behaviour.
+        // So, here we ignore the overwrite mode for such a consistency.
         i.catalogTable foreach { t =>
           addTableOrViewLevelObjs(
             t.identifier,
             outputObjs,
             currentDb,
             i.partitionColumns.map(_.name).toList.asJava,
-            t.schema.fieldNames.toList.asJava,
-            i.mode)
+            t.schema.fieldNames.toList.asJava)
         }
         buildUnaryHivePrivObjs(
           i.query, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)

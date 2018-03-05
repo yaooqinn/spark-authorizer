@@ -83,77 +83,89 @@ object Authorizer extends Rule[LogicalPlan] {
     */
   private def logicalPlan2HiveOperation(logicalPlan: LogicalPlan): HiveOperation = {
     logicalPlan match {
-      case c: Command => c match {
-        case _: AnalyzeColumnCommand => HiveOperation.QUERY
-        case _: AnalyzePartitionCommand => HiveOperation.QUERY
-        case _: AlterTableAddColumnsCommand => HiveOperation.ALTERTABLE_ADDCOLS
-        case _: AlterTableChangeColumnCommand => HiveOperation.ALTERTABLE_RENAMECOL
-        case e: ExplainCommand => logicalPlan2HiveOperation(e.logicalPlan)
-        case s: StreamingExplainCommand =>
-          logicalPlan2HiveOperation(s.queryExecution.optimizedPlan)
-        case _: LoadDataCommand => HiveOperation.LOAD
-        case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
-        case _: InsertIntoDataSourceDirCommand => HiveOperation.QUERY
-        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.QUERY
-        case _: InsertIntoHiveDirCommand => HiveOperation.QUERY
-        case _: InsertIntoHiveTable => HiveOperation.QUERY
-        case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
-        case _: DropDatabaseCommand => HiveOperation.DROPDATABASE
-        case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
-        case _: DropTableCommand => HiveOperation.DROPTABLE
-        case _: DescribeTableCommand => HiveOperation.DESCTABLE
-        case _: DescribeColumnCommand => HiveOperation.DESCTABLE
-        case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
-        case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
-        case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART
-        case a: AlterTableRenameCommand =>
-          if (!a.isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
-        case _: AlterTableDropPartitionCommand => HiveOperation.ALTERTABLE_DROPPARTS
-        case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS
-        case _: AlterTableSetPropertiesCommand
-             | _: AlterTableUnsetPropertiesCommand => HiveOperation.ALTERTABLE_PROPERTIES
-        case _: AlterTableSerDePropertiesCommand => HiveOperation.ALTERTABLE_SERDEPROPERTIES
-        // case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
-        // Hive treat AnalyzeTableCommand as QUERY, obey it.
-        case _: AnalyzeTableCommand => HiveOperation.QUERY
-        case _: ShowDatabasesCommand => HiveOperation.SHOWDATABASES
-        case _: ShowTablesCommand => HiveOperation.SHOWTABLES
-        case _: ShowColumnsCommand => HiveOperation.SHOWCOLUMNS
-        case _: ShowTablePropertiesCommand => HiveOperation.SHOW_TBLPROPERTIES
-        case _: ShowCreateTableCommand => HiveOperation.SHOW_CREATETABLE
-        case _: ShowFunctionsCommand => HiveOperation.SHOWFUNCTIONS
-        case _: ShowPartitionsCommand => HiveOperation.SHOWPARTITIONS
-        case s: SetCommand if s.kv.isEmpty || s.kv.get._2.isEmpty => HiveOperation.SHOWCONF
-        case _: CreateFunctionCommand => HiveOperation.CREATEFUNCTION
-        // Hive don't check privileges for `drop function command`, what about a unverified user
-        // try to drop functions.
-        // We treat permanent functions as tables for verifying.
-        case d: DropFunctionCommand if !d.isTemp => HiveOperation.DROPTABLE
-        case d: DropFunctionCommand if d.isTemp => HiveOperation.DROPFUNCTION
-        case _: CreateViewCommand
-             | _: CacheTableCommand
-             | _: CreateTempViewUsing => HiveOperation.CREATEVIEW
-        case _: UncacheTableCommand => HiveOperation.DROPVIEW
-        case _: AlterTableSetLocationCommand => HiveOperation.ALTERTABLE_LOCATION
-        case _: CreateTable
-             | _: CreateTableCommand
-             | _: CreateDataSourceTableCommand => HiveOperation.CREATETABLE
-        case _: TruncateTableCommand => HiveOperation.TRUNCATETABLE
-        case _: CreateDataSourceTableAsSelectCommand
-             | _: CreateHiveTableAsSelectCommand => HiveOperation.CREATETABLE_AS_SELECT
-        case _: CreateTableLikeCommand => HiveOperation.CREATETABLE
-        case _: AlterDatabasePropertiesCommand => HiveOperation.ALTERDATABASE
-        case _: DescribeDatabaseCommand => HiveOperation.DESCDATABASE
-        // case _: AlterViewAsCommand => HiveOperation.ALTERVIEW_AS
-        case _: AlterViewAsCommand => HiveOperation.QUERY
-        case _: SaveIntoDataSourceCommand => HiveOperation.QUERY
-        case _ =>
-          // AddFileCommand
-          // AddJarCommand
-          // ...
-          HiveOperation.EXPLAIN
-      }
-      case _: InsertIntoTable => HiveOperation.QUERY
+      case _: AlterDatabasePropertiesCommand => HiveOperation.ALTERDATABASE
+      case _: AlterTableAddColumnsCommand => HiveOperation.ALTERTABLE_ADDCOLS
+      case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS
+      case _: AlterTableChangeColumnCommand => HiveOperation.ALTERTABLE_RENAMECOL
+      case _: AlterTableDropPartitionCommand => HiveOperation.ALTERTABLE_DROPPARTS
+      case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
+      case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART
+      case a: AlterTableRenameCommand =>
+        if (!a.isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
+      case _: AlterTableSetPropertiesCommand
+           | _: AlterTableUnsetPropertiesCommand => HiveOperation.ALTERTABLE_PROPERTIES
+      case _: AlterTableSerDePropertiesCommand => HiveOperation.ALTERTABLE_SERDEPROPERTIES
+      case _: AlterTableSetLocationCommand => HiveOperation.ALTERTABLE_LOCATION
+      case _: AlterViewAsCommand => HiveOperation.QUERY
+      // case _: AlterViewAsCommand => HiveOperation.ALTERVIEW_AS
+
+      case _: AnalyzeColumnCommand => HiveOperation.QUERY
+      // case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
+      // Hive treat AnalyzeTableCommand as QUERY, obey it.
+      case _: AnalyzeTableCommand => HiveOperation.QUERY
+      case _: AnalyzePartitionCommand => HiveOperation.QUERY
+
+
+      case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
+      case _: CreateDataSourceTableAsSelectCommand
+           | _: CreateHiveTableAsSelectCommand => HiveOperation.CREATETABLE_AS_SELECT
+      case _: CreateFunctionCommand => HiveOperation.CREATEFUNCTION
+      case _: CreateTable
+           | _: CreateTableCommand
+           | _: CreateDataSourceTableCommand => HiveOperation.CREATETABLE
+      case _: CreateTableLikeCommand => HiveOperation.CREATETABLE
+      case _: CreateViewCommand
+           | _: CacheTableCommand
+           | _: CreateTempViewUsing => HiveOperation.CREATEVIEW
+
+      case _: DescribeColumnCommand => HiveOperation.DESCTABLE
+      case _: DescribeDatabaseCommand => HiveOperation.DESCDATABASE
+      case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
+      case _: DescribeTableCommand => HiveOperation.DESCTABLE
+
+      case _: DropDatabaseCommand => HiveOperation.DROPDATABASE
+      // Hive don't check privileges for `drop function command`, what about a unverified user
+      // try to drop functions.
+      // We treat permanent functions as tables for verifying.
+      case d: DropFunctionCommand if !d.isTemp => HiveOperation.DROPTABLE
+      case d: DropFunctionCommand if d.isTemp => HiveOperation.DROPFUNCTION
+      case _: DropTableCommand => HiveOperation.DROPTABLE
+
+      case e: ExplainCommand => logicalPlan2HiveOperation(e.logicalPlan)
+
+      case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
+      case _: InsertIntoDataSourceDirCommand => HiveOperation.QUERY
+      case _: InsertIntoHadoopFsRelationCommand => HiveOperation.CREATETABLE_AS_SELECT
+      case _: InsertIntoHiveDirCommand => HiveOperation.QUERY
+      case _: InsertIntoHiveTable => HiveOperation.QUERY
+      case _: InsertIntoTable => HiveOperation.CREATETABLE_AS_SELECT
+
+      case _: LoadDataCommand => HiveOperation.LOAD
+
+      case _: SaveIntoDataSourceCommand => HiveOperation.QUERY
+      case s: SetCommand if s.kv.isEmpty || s.kv.get._2.isEmpty => HiveOperation.SHOWCONF
+      case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
+      case _: ShowCreateTableCommand => HiveOperation.SHOW_CREATETABLE
+      case _: ShowColumnsCommand => HiveOperation.SHOWCOLUMNS
+      case _: ShowDatabasesCommand => HiveOperation.SHOWDATABASES
+      case _: ShowFunctionsCommand => HiveOperation.SHOWFUNCTIONS
+      case _: ShowPartitionsCommand => HiveOperation.SHOWPARTITIONS
+      case _: ShowTablesCommand => HiveOperation.SHOWTABLES
+      case _: ShowTablePropertiesCommand => HiveOperation.SHOW_TBLPROPERTIES
+      case s: StreamingExplainCommand =>
+        logicalPlan2HiveOperation(s.queryExecution.optimizedPlan)
+
+      case _: TruncateTableCommand => HiveOperation.TRUNCATETABLE
+
+      case _: UncacheTableCommand => HiveOperation.DROPVIEW
+
+      // Commands that do not need build privilege goes as explain type
+      case _: Command =>
+        // AddFileCommand
+        // AddJarCommand
+        // ...
+        HiveOperation.EXPLAIN
+
       case _ => HiveOperation.QUERY
     }
   }
