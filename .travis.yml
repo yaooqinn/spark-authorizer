@@ -12,9 +12,9 @@ deploy:
     branch: master
 
 install:
-  - ./build/mvn install -q -DskipTests=true -Dmaven.javadoc.skip=true -B -V
+  - mvn install -q -DskipTests=true -Dmaven.javadoc.skip=true -B -V
 
 script:
-  - ./build/mvn package -q -Dmaven.javadoc.skip=true -B -V
-  - ./build/mvn package -Pspark-2.2 -q -Dmaven.javadoc.skip=true -B -V
-  - ./build/mvn package -Pspark-2.3 -q -Dmaven.javadoc.skip=true -B -V
+  - mvn package -q -Dmaven.javadoc.skip=true -B -V
+  - mvn package -Pspark-2.2 -q -Dmaven.javadoc.skip=true -B -V
+  - mvn package -Pspark-2.3 -q -Dmaven.javadoc.skip=true -B -V
