@@ -20,13 +20,12 @@ package org.apache.spark.sql.catalyst.optimizer
 import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
 
-import org.apache.spark.sql.{Authorizable, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.hive.{DefaultAuthorizerImpl, HiveExternalCatalog, HivePrivObjsFromPlan}
-import org.apache.spark.sql.hive.execution.{CreateHiveTableAsSelectCommand, InsertIntoHiveDirCommand, InsertIntoHiveTable}
+import org.apache.spark.sql.hive.{DefaultAuthorizerImpl, HivePrivObjsFromPlan}
+import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 
 /**
  * Do Hive Authorizing V2, with `Apache Ranger` ranger-hive-plugin well configured,
@@ -51,25 +50,10 @@ object Authorizer extends Rule[LogicalPlan] {
    * @return a plan itself which has gone through the privilege check.
    */
   override def apply(plan: LogicalPlan): LogicalPlan = {
-    val hiveOperationType = toHiveOperationType(plan)
-    val hiveAuthzContext = getHiveAuthzContext(plan)
-    SparkSession.getActiveSession match {
-      case Some(session) =>
-        session.sharedState.externalCatalog match {
-          case catalog: HiveExternalCatalog =>
-            catalog.client match {
-              case authz: Authorizable =>
-                val (in, out) = HivePrivObjsFromPlan.build(plan, authz.currentDatabase())
-                authz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
-              case _ =>
-                val (in, out) = HivePrivObjsFromPlan.build(plan, defaultAuthz.currentDatabase())
-                defaultAuthz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
-            }
-          case _ =>
-        }
-      case None =>
-    }
-
+    val hiveOperationType: HiveOperationType = getOperationType(plan)
+    val hiveAuthzContext: HiveAuthzContext = getHiveAuthzContext(plan)
+    val (in, out) = HivePrivObjsFromPlan.build(plan)
+    defaultAuthz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
     // We just return the original plan here, so this rule will be executed only once
     plan
   }
@@ -78,100 +62,101 @@ object Authorizer extends Rule[LogicalPlan] {
 
   /**
     * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
-    * @param logicalPlan a spark LogicalPlan
+    * @param plan a spark LogicalPlan
     * @return
     */
-  private def logicalPlan2HiveOperation(logicalPlan: LogicalPlan): HiveOperation = {
-    logicalPlan match {
-      case _: AlterDatabasePropertiesCommand => HiveOperation.ALTERDATABASE
-      case _: AlterTableAddColumnsCommand => HiveOperation.ALTERTABLE_ADDCOLS
-      case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS
-      case _: AlterTableChangeColumnCommand => HiveOperation.ALTERTABLE_RENAMECOL
-      case _: AlterTableDropPartitionCommand => HiveOperation.ALTERTABLE_DROPPARTS
-      case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
-      case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART
-      case a: AlterTableRenameCommand =>
-        if (!a.isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
-      case _: AlterTableSetPropertiesCommand
-           | _: AlterTableUnsetPropertiesCommand => HiveOperation.ALTERTABLE_PROPERTIES
-      case _: AlterTableSerDePropertiesCommand => HiveOperation.ALTERTABLE_SERDEPROPERTIES
-      case _: AlterTableSetLocationCommand => HiveOperation.ALTERTABLE_LOCATION
-      case _: AlterViewAsCommand => HiveOperation.QUERY
-      // case _: AlterViewAsCommand => HiveOperation.ALTERVIEW_AS
+  private[optimizer] def getHiveOperation(plan: LogicalPlan): HiveOperation = {
+    plan match {
+      case c: Command => c match {
 
-      case _: AnalyzeColumnCommand => HiveOperation.QUERY
-      // case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
-      // Hive treat AnalyzeTableCommand as QUERY, obey it.
-      case _: AnalyzeTableCommand => HiveOperation.QUERY
-      case _: AnalyzePartitionCommand => HiveOperation.QUERY
+        case _: AlterDatabasePropertiesCommand => HiveOperation.ALTERDATABASE
+        case p if p.nodeName == "AlterTableAddColumnsCommand" => HiveOperation.ALTERTABLE_ADDCOLS
+        case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS
+        case p if p.nodeName == "AlterTableChangeColumnCommand" =>
+          HiveOperation.ALTERTABLE_RENAMECOL
+        case _: AlterTableDropPartitionCommand => HiveOperation.ALTERTABLE_DROPPARTS
+        case _: AlterTableRecoverPartitionsCommand => HiveOperation.MSCK
+        case _: AlterTableRenamePartitionCommand => HiveOperation.ALTERTABLE_RENAMEPART
+        case a: AlterTableRenameCommand =>
+          if (!a.isView) HiveOperation.ALTERTABLE_RENAME else HiveOperation.ALTERVIEW_RENAME
+        case _: AlterTableSetPropertiesCommand
+             | _: AlterTableUnsetPropertiesCommand => HiveOperation.ALTERTABLE_PROPERTIES
+        case _: AlterTableSerDePropertiesCommand => HiveOperation.ALTERTABLE_SERDEPROPERTIES
+        case _: AlterTableSetLocationCommand => HiveOperation.ALTERTABLE_LOCATION
+        case _: AlterViewAsCommand => HiveOperation.QUERY
+        // case _: AlterViewAsCommand => HiveOperation.ALTERVIEW_AS
 
+        case _: AnalyzeColumnCommand => HiveOperation.QUERY
+        // case _: AnalyzeTableCommand => HiveOperation.ANALYZE_TABLE
+        // Hive treat AnalyzeTableCommand as QUERY, obey it.
+        case _: AnalyzeTableCommand => HiveOperation.QUERY
+        case p if p.nodeName == "AnalyzePartitionCommand" => HiveOperation.QUERY
 
-      case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
-      case _: CreateDataSourceTableAsSelectCommand
-           | _: CreateHiveTableAsSelectCommand => HiveOperation.CREATETABLE_AS_SELECT
-      case _: CreateFunctionCommand => HiveOperation.CREATEFUNCTION
-      case _: CreateTable
-           | _: CreateTableCommand
-           | _: CreateDataSourceTableCommand => HiveOperation.CREATETABLE
-      case _: CreateTableLikeCommand => HiveOperation.CREATETABLE
-      case _: CreateViewCommand
-           | _: CacheTableCommand
-           | _: CreateTempViewUsing => HiveOperation.CREATEVIEW
+        case _: CreateDatabaseCommand => HiveOperation.CREATEDATABASE
+        case _: CreateDataSourceTableAsSelectCommand
+             | _: CreateHiveTableAsSelectCommand => HiveOperation.CREATETABLE_AS_SELECT
+        case _: CreateFunctionCommand => HiveOperation.CREATEFUNCTION
+        case _: CreateTableCommand
+             | _: CreateDataSourceTableCommand => HiveOperation.CREATETABLE
+        case _: CreateTableLikeCommand => HiveOperation.CREATETABLE
+        case _: CreateViewCommand
+             | _: CacheTableCommand
+             | _: CreateTempViewUsing => HiveOperation.CREATEVIEW
 
-      case _: DescribeColumnCommand => HiveOperation.DESCTABLE
-      case _: DescribeDatabaseCommand => HiveOperation.DESCDATABASE
-      case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
-      case _: DescribeTableCommand => HiveOperation.DESCTABLE
+        case p if p.nodeName == "DescribeColumnCommand" => HiveOperation.DESCTABLE
+        case _: DescribeDatabaseCommand => HiveOperation.DESCDATABASE
+        case _: DescribeFunctionCommand => HiveOperation.DESCFUNCTION
+        case _: DescribeTableCommand => HiveOperation.DESCTABLE
 
-      case _: DropDatabaseCommand => HiveOperation.DROPDATABASE
-      // Hive don't check privileges for `drop function command`, what about a unverified user
-      // try to drop functions.
-      // We treat permanent functions as tables for verifying.
-      case d: DropFunctionCommand if !d.isTemp => HiveOperation.DROPTABLE
-      case d: DropFunctionCommand if d.isTemp => HiveOperation.DROPFUNCTION
-      case _: DropTableCommand => HiveOperation.DROPTABLE
+        case _: DropDatabaseCommand => HiveOperation.DROPDATABASE
+        // Hive don't check privileges for `drop function command`, what about a unverified user
+        // try to drop functions.
+        // We treat permanent functions as tables for verifying.
+        case d: DropFunctionCommand if !d.isTemp => HiveOperation.DROPTABLE
+        case d: DropFunctionCommand if d.isTemp => HiveOperation.DROPFUNCTION
+        case _: DropTableCommand => HiveOperation.DROPTABLE
 
-      case e: ExplainCommand => logicalPlan2HiveOperation(e.logicalPlan)
+        case e: ExplainCommand => getHiveOperation(e.logicalPlan)
 
-      case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
-      case _: InsertIntoDataSourceDirCommand => HiveOperation.QUERY
-      case _: InsertIntoHadoopFsRelationCommand => HiveOperation.CREATETABLE_AS_SELECT
-      case _: InsertIntoHiveDirCommand => HiveOperation.QUERY
-      case _: InsertIntoHiveTable => HiveOperation.QUERY
-      case _: InsertIntoTable => HiveOperation.CREATETABLE_AS_SELECT
+        case _: InsertIntoDataSourceCommand => HiveOperation.QUERY
+        case p if p.nodeName == "InsertIntoDataSourceDirCommand" => HiveOperation.QUERY
+        case _: InsertIntoHadoopFsRelationCommand => HiveOperation.CREATETABLE_AS_SELECT
+        case p if p.nodeName == "InsertIntoHiveDirCommand" => HiveOperation.QUERY
+        case p if p.nodeName == "InsertIntoHiveTable" => HiveOperation.QUERY
 
-      case _: LoadDataCommand => HiveOperation.LOAD
+        case _: LoadDataCommand => HiveOperation.LOAD
 
-      case _: SaveIntoDataSourceCommand => HiveOperation.QUERY
-      case s: SetCommand if s.kv.isEmpty || s.kv.get._2.isEmpty => HiveOperation.SHOWCONF
-      case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
-      case _: ShowCreateTableCommand => HiveOperation.SHOW_CREATETABLE
-      case _: ShowColumnsCommand => HiveOperation.SHOWCOLUMNS
-      case _: ShowDatabasesCommand => HiveOperation.SHOWDATABASES
-      case _: ShowFunctionsCommand => HiveOperation.SHOWFUNCTIONS
-      case _: ShowPartitionsCommand => HiveOperation.SHOWPARTITIONS
-      case _: ShowTablesCommand => HiveOperation.SHOWTABLES
-      case _: ShowTablePropertiesCommand => HiveOperation.SHOW_TBLPROPERTIES
-      case s: StreamingExplainCommand =>
-        logicalPlan2HiveOperation(s.queryExecution.optimizedPlan)
+        case p if p.nodeName == "SaveIntoDataSourceCommand" => HiveOperation.QUERY
+        case s: SetCommand if s.kv.isEmpty || s.kv.get._2.isEmpty => HiveOperation.SHOWCONF
+        case _: SetDatabaseCommand => HiveOperation.SWITCHDATABASE
+        case _: ShowCreateTableCommand => HiveOperation.SHOW_CREATETABLE
+        case _: ShowColumnsCommand => HiveOperation.SHOWCOLUMNS
+        case _: ShowDatabasesCommand => HiveOperation.SHOWDATABASES
+        case _: ShowFunctionsCommand => HiveOperation.SHOWFUNCTIONS
+        case _: ShowPartitionsCommand => HiveOperation.SHOWPARTITIONS
+        case _: ShowTablesCommand => HiveOperation.SHOWTABLES
+        case _: ShowTablePropertiesCommand => HiveOperation.SHOW_TBLPROPERTIES
+        case s: StreamingExplainCommand =>
+          getHiveOperation(s.queryExecution.optimizedPlan)
 
-      case _: TruncateTableCommand => HiveOperation.TRUNCATETABLE
+        case _: TruncateTableCommand => HiveOperation.TRUNCATETABLE
 
-      case _: UncacheTableCommand => HiveOperation.DROPVIEW
+        case _: UncacheTableCommand => HiveOperation.DROPVIEW
 
-      // Commands that do not need build privilege goes as explain type
-      case _: Command =>
-        // AddFileCommand
-        // AddJarCommand
-        // ...
-        HiveOperation.EXPLAIN
-
+        // Commands that do not need build privilege goes as explain type
+        case _ =>
+          // AddFileCommand
+          // AddJarCommand
+          // ...
+          HiveOperation.EXPLAIN
+      }
       case _ => HiveOperation.QUERY
     }
+
   }
 
-  private[this] def toHiveOperationType(logicalPlan: LogicalPlan): HiveOperationType = {
-    HiveOperationType.valueOf(logicalPlan2HiveOperation(logicalPlan).name())
+  private[this] def getOperationType(logicalPlan: LogicalPlan): HiveOperationType = {
+    HiveOperationType.valueOf(getHiveOperation(logicalPlan).name())
   }
 
   /**
