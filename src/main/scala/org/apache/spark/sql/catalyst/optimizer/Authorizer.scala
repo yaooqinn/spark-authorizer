@@ -55,7 +55,12 @@ object Authorizer extends Rule[LogicalPlan] {
     val (in, out) = HivePrivObjsFromPlan.build(plan)
     defaultAuthz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
     // We just return the original plan here, so this rule will be executed only once
-    plan
+    plan match {
+      case ShowDatabasesCommand(patten) => AuthorizedShowDatabasesCommand(patten)
+      case ShowTablesCommand(databaseName, tableIdentifierPattern) =>
+        AuthorizedShowTablesCommand(databaseName, tableIdentifierPattern)
+      case _ => plan
+    }
   }
 
   private lazy val defaultAuthz = new DefaultAuthorizerImpl

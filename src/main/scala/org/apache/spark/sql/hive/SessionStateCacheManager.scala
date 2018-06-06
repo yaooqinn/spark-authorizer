@@ -27,7 +27,7 @@ import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.session.SessionState
 
 import org.apache.spark.sql.Logging
-import org.apache.spark.util.ShutdownHookManager
+import org.apache.spark.util.{ShutdownHookManager, Utils}
 
 class SessionStateCacheManager(conf: Configuration) extends Logging {
   private[this] val cacheManager =
@@ -40,6 +40,11 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
   private[this] val userLastActive = new ConcurrentHashMap[String, Long]
 
   private[this] def currentTime: Long = System.currentTimeMillis()
+
+  /**
+   * Get SPARK_USER
+   */
+  private[this] def currentUser: String = Utils.getCurrentUserName()
 
   private[this] val stateCleaner = new Runnable {
     override def run(): Unit = {
@@ -56,7 +61,8 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
     }
   }
 
-  def getState(user: String): SessionState = {
+  def getState(): SessionState = {
+    val user = currentUser
     userLastActive.put(user, currentTime)
     val state = userToState.get(user)
     if (state != null) {
@@ -103,9 +109,11 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
 
 object SessionStateCacheManager {
   private[this] var manager: SessionStateCacheManager = _
-  def startCacheManager(conf: Configuration): SessionStateCacheManager = {
+
+  def startCacheManager(conf: Configuration): Unit = {
     manager = new SessionStateCacheManager(conf)
     manager.start()
-    manager
   }
+
+  def get(): SessionStateCacheManager = manager
 }

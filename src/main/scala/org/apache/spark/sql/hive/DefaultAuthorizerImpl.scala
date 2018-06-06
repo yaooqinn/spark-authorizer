@@ -70,7 +70,7 @@ class DefaultAuthorizerImpl extends Logging {
     conf
   }
 
-  private[this] lazy val stateCacheManager = SessionStateCacheManager.startCacheManager(hadoopConf)
+  SessionStateCacheManager.startCacheManager(hadoopConf)
 
   /**
    * Only a given [[SparkSession]] backed by Hive will involve privilege checking
@@ -79,18 +79,12 @@ class DefaultAuthorizerImpl extends Logging {
   private[this] val isHiveSessionState: Boolean = sparkSession.sparkContext
     .getConf.getOption("spark.sql.catalogImplementation").exists(_.equals("hive"))
 
-  /**
-   * Get SPARK_USER
-   * @return
-   */
-  private[this] def getCurrentUser: String = Utils.getCurrentUserName()
-
   def checkPrivileges(
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = if (isHiveSessionState) {
-    val s = stateCacheManager.getState(this.getCurrentUser)
+    val s = SessionStateCacheManager.get().getState()
     if (s != null) {
       Option(s.getAuthorizerV2) match {
         case Some(authz) =>
