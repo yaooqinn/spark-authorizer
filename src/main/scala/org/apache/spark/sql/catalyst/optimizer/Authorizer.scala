@@ -68,7 +68,6 @@ object Authorizer extends Rule[LogicalPlan] {
   private[optimizer] def getHiveOperation(plan: LogicalPlan): HiveOperation = {
     plan match {
       case c: Command => c match {
-
         case _: AlterDatabasePropertiesCommand => HiveOperation.ALTERDATABASE
         case p if p.nodeName == "AlterTableAddColumnsCommand" => HiveOperation.ALTERTABLE_ADDCOLS
         case _: AlterTableAddPartitionCommand => HiveOperation.ALTERTABLE_ADDPARTS

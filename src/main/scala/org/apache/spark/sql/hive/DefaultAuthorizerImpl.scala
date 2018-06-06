@@ -23,7 +23,7 @@ import java.util.{List => JList}
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.internal.Logging
+import org.apache.spark.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.Utils
 
@@ -78,7 +78,7 @@ class DefaultAuthorizerImpl extends Logging {
    * @return
    */
   private[this] val isHiveSessionState: Boolean = sparkSession.sparkContext
-    .getConf.getOption("spark.sql.catalogImplementation").exists(_.toBoolean)
+    .getConf.getOption("spark.sql.catalogImplementation").exists(_.equals("hive"))
 
   /**
    * Get SPARK_USER
