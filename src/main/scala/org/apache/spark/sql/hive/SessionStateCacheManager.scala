@@ -58,7 +58,13 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
 
   def getState(user: String): SessionState = {
     userLastActive.put(user, currentTime)
-    userToState.getOrDefault(user, newState(user))
+    val state = userToState.get(user)
+    if (state == null) {
+      info()
+      state
+    } else {
+      newState(user)
+    }
   }
 
   /**
