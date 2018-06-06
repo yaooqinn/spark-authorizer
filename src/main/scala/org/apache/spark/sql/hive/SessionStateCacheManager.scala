@@ -60,7 +60,6 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
     userLastActive.put(user, currentTime)
     val state = userToState.get(user)
     if (state == null) {
-      info()
       state
     } else {
       newState(user)
@@ -103,9 +102,7 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
 }
 
 object SessionStateCacheManager {
-
   private[this] var manager: SessionStateCacheManager = _
-
   def startCacheManager(conf: Configuration): SessionStateCacheManager = {
     manager = new SessionStateCacheManager(conf)
     manager.start()
