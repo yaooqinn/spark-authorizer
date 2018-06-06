@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.Logging
+import org.apache.spark.internal.Logging
 import org.apache.spark.util.ShutdownHookManager
 
 class SessionStateCacheManager(conf: Configuration) extends Logging {
