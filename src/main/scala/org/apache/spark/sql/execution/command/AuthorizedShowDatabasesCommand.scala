@@ -22,10 +22,16 @@ import scala.collection.JavaConverters._
 import org.apache.hadoop.hive.ql.metadata.Hive
 
 import org.apache.spark.sql.{Row, SparkSession}
+import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.hive.SessionStateCacheManager
+import org.apache.spark.sql.types.StringType
 
-case class AuthorizedShowDatabasesCommand(override val databasePattern: Option[String])
-  extends ShowDatabasesCommand(databasePattern) {
+case class AuthorizedShowDatabasesCommand(databasePattern: Option[String]) extends RunnableCommand {
+
+  // The result of SHOW DATABASES has one column called 'databaseName'
+  override val output: Seq[Attribute] = {
+    AttributeReference("databaseName", StringType, nullable = false)() :: Nil
+  }
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog

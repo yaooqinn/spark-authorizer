@@ -57,8 +57,8 @@ object Authorizer extends Rule[LogicalPlan] {
     // We just return the original plan here, so this rule will be executed only once
     plan match {
       case ShowDatabasesCommand(patten) => AuthorizedShowDatabasesCommand(patten)
-      case ShowTablesCommand(databaseName, tableIdentifierPattern) =>
-        AuthorizedShowTablesCommand(databaseName, tableIdentifierPattern)
+      case s: ShowTablesCommand =>
+        AuthorizedShowTablesCommand(s.databaseName, s.tableIdentifierPattern)
       case _ => plan
     }
   }
