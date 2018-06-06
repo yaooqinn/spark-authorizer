@@ -26,7 +26,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.internal.Logging
+import org.apache.spark.sql.Logging
 import org.apache.spark.util.ShutdownHookManager
 
 class SessionStateCacheManager(conf: Configuration) extends Logging {
@@ -75,20 +75,20 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
       userToState.put(user, state)
     } catch {
       case e: RuntimeException =>
-        logError("Failed to initialize SessionState for authorization", e.getCause)
+        error("Failed to initialize SessionState for authorization", e.getCause)
         null
     }
   }
 
   def start(): Unit = {
     val interval = 60
-    logInfo(s"Scheduling SessionState cache cleaning every $interval seconds")
+    info(s"Scheduling SessionState cache cleaning every $interval seconds")
     cacheManager.scheduleAtFixedRate(stateCleaner, interval, interval, TimeUnit.SECONDS)
     ShutdownHookManager.addShutdownHook(() => this.stop())
   }
 
   def stop(): Unit = {
-    logInfo("Stopping SessionState Cache Manager")
+    info("Stopping SessionState Cache Manager")
     cacheManager.shutdown()
     userToState.asScala.values.foreach(_.close())
     userToState.clear()

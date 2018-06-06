@@ -23,8 +23,7 @@ import java.util.{List => JList}
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.internal.Logging
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Logging, SparkSession}
 import org.apache.spark.util.Utils
 
 /**
@@ -58,14 +57,14 @@ class DefaultAuthorizerImpl extends Logging {
       val file = new File(dir)
       if (!file.exists()) {
         if (file.mkdirs()) {
-          logInfo("Creating ranger policy cache directory at " + file.getAbsolutePath)
+          info("Creating ranger policy cache directory at " + file.getAbsolutePath)
           file.deleteOnExit()
         } else {
-          logWarning("Unable to create ranger policy cache directory at "
+          warn("Unable to create ranger policy cache directory at "
             + file.getAbsolutePath)
         }
       } else {
-        logWarning("Ranger policy cache directory already exists")
+        warn("Ranger policy cache directory already exists")
       }
     }
     conf
@@ -99,7 +98,7 @@ class DefaultAuthorizerImpl extends Logging {
             authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
           } catch {
             case hae: HiveAccessControlException =>
-              logError(
+              error(
                 s"""
                    |+===============================+
                    ||Spark SQL Authorization Failure|
@@ -113,7 +112,7 @@ class DefaultAuthorizerImpl extends Logging {
             case e: Exception => throw e
           }
         case None =>
-          logWarning("Authorizer V2 not configured.")
+          warn("Authorizer V2 not configured.")
       }
     }
   }
