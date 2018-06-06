@@ -18,9 +18,8 @@
 package org.apache.spark.sql.hive
 
 import java.io.File
-import java.util.{List => JList, WeakHashMap => JWHMap}
+import java.util.{List => JList}
 
-import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
 import org.apache.hadoop.hive.ql.session.SessionState
 
@@ -47,9 +46,7 @@ class DefaultAuthorizerImpl extends Logging {
   private[this] def sparkSession =
     SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession).get
 
-  private[this] val userToState = new JWHMap[String, SessionState]()
-
-  private def hadoopConf = {
+  private[this] val hadoopConf = {
     val conf = sparkSession.sparkContext.hadoopConfiguration
     Seq("hive-site.xml", "ranger-hive-security.xml", "ranger-hive-audit.xml.xml")
       .foreach { file =>
@@ -74,11 +71,13 @@ class DefaultAuthorizerImpl extends Logging {
     conf
   }
 
+  private[this] lazy val stateCacheManager = SessionStateCacheManager.startCacheManager(hadoopConf)
+
   /**
    * Only a given [[SparkSession]] backed by Hive will involve privilege checking
    * @return
    */
-  private[this] def isHiveSessionState: Boolean = sparkSession.sparkContext
+  private[this] val isHiveSessionState: Boolean = sparkSession.sparkContext
     .getConf.getOption("spark.sql.catalogImplementation").exists(_.toBoolean)
 
   /**
@@ -87,56 +86,36 @@ class DefaultAuthorizerImpl extends Logging {
    */
   private[this] def getCurrentUser: String = Utils.getCurrentUserName()
 
-  /**
-   * Create a Hive [[SessionState]]
-   * @return
-   */
-  private[this] def newState: SessionState = {
-    val hiveConf = new HiveConf(hadoopConf, classOf[SessionState])
-    val state = new SessionState(hiveConf, this.getCurrentUser)
-    SessionState.start(state)
-    state
-  }
-
-  private[this] def getOrCreateState: SessionState = {
-    val user = this.getCurrentUser
-    val state = userToState.get(user)
-    if (state == null ) {
-      userToState.put(user, newState)
-    } else {
-      state
-    }
-  }
-
   def checkPrivileges(
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = if (isHiveSessionState) {
-    val s = getOrCreateState
-    s.setIsHiveServerQuery(true)
-    Option(s.getAuthorizerV2) match {
-      case Some(authz) =>
-        try {
-          authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
-        } catch {
-          case hae: HiveAccessControlException =>
-            logError(
-              s"""
-                 |+===============================+
-                 ||Spark SQL Authorization Failure|
-                 ||-------------------------------|
-                 ||${hae.getMessage}
-                 ||-------------------------------|
-                 ||Spark SQL Authorization Failure|
-                 |+===============================+
-               """.stripMargin)
-            throw hae
-          case e: Exception => throw e
-        }
-      case None =>
-        logWarning("Authorizer V2 not configured.")
+    val s = stateCacheManager.getState(this.getCurrentUser)
+    if (s != null) {
+      Option(s.getAuthorizerV2) match {
+        case Some(authz) =>
+          try {
+            authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
+          } catch {
+            case hae: HiveAccessControlException =>
+              logError(
+                s"""
+                   |+===============================+
+                   ||Spark SQL Authorization Failure|
+                   ||-------------------------------|
+                   ||${hae.getMessage}
+                   ||-------------------------------|
+                   ||Spark SQL Authorization Failure|
+                   |+===============================+
+                 """.stripMargin)
+              throw hae
+            case e: Exception => throw e
+          }
+        case None =>
+          logWarning("Authorizer V2 not configured.")
+      }
     }
   }
-
 }
+
