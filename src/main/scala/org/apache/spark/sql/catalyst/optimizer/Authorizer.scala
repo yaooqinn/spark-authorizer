@@ -56,9 +56,9 @@ object Authorizer extends Rule[LogicalPlan] {
     defaultAuthz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
     // We just return the original plan here, so this rule will be executed only once
     plan match {
-      case ShowDatabasesCommand(patten) => AuthorizedShowDatabasesCommand(patten)
+      case s: ShowDatabasesCommand => AuthorizedShowDatabasesCommand(s.databasePattern, s.output)
       case s: ShowTablesCommand =>
-        AuthorizedShowTablesCommand(s.databaseName, s.tableIdentifierPattern)
+        AuthorizedShowTablesCommand(s.databaseName, s.tableIdentifierPattern, s.output)
       case _ => plan
     }
   }

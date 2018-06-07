@@ -23,9 +23,8 @@ import org.apache.hadoop.hive.ql.metadata.Hive
 
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
-import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
+import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.hive.SessionStateCacheManager
-import org.apache.spark.sql.types.{BooleanType, StringType}
 
 
 /**
@@ -42,14 +41,8 @@ import org.apache.spark.sql.types.{BooleanType, StringType}
  */
 case class AuthorizedShowTablesCommand(
     databaseName: Option[String],
-    tableIdentifierPattern: Option[String]) extends RunnableCommand {
-
-  // The result of SHOW TABLES has three columns: database, tableName and isTemporary.
-  override val output: Seq[Attribute] = {
-    AttributeReference("database", StringType, nullable = false)() ::
-      AttributeReference("tableName", StringType, nullable = false)() ::
-      AttributeReference("isTemporary", BooleanType, nullable = false)() :: Nil
-  }
+    tableIdentifierPattern: Option[String],
+    override val output: Seq[Attribute]) extends RunnableCommand {
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog

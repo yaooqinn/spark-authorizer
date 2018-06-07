@@ -59,8 +59,7 @@ class SessionStateCacheManager(conf: SparkConf) extends Logging {
           info("Creating ranger policy cache directory at " + file.getAbsolutePath)
           file.deleteOnExit()
         } else {
-          warn("Unable to create ranger policy cache directory at "
-            + file.getAbsolutePath)
+          warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
         }
       } else {
         warn("Ranger policy cache directory already exists")
@@ -82,7 +81,9 @@ class SessionStateCacheManager(conf: SparkConf) extends Logging {
       userToState.asScala.foreach {
         case (user, state) =>
           val lastActive = userLastActive.getOrDefault(user, currentTime)
-          if (currentTime - lastActive > timeout) {
+          val idled = currentTime - lastActive
+          if (idled > timeout) {
+            info("")
             userToState.remove(user)
             state.close()
             userLastActive.remove(user)
