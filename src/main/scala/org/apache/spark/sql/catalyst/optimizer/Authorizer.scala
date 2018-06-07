@@ -156,7 +156,6 @@ object Authorizer extends Rule[LogicalPlan] {
       }
       case _ => HiveOperation.QUERY
     }
-
   }
 
   private[this] def getOperationType(logicalPlan: LogicalPlan): HiveOperationType = {
