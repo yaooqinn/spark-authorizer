@@ -17,14 +17,12 @@
 
 package org.apache.spark.sql.hive
 
-import java.io.File
 import java.util.{List => JList}
 
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
 import org.apache.hadoop.hive.ql.session.SessionState
 
 import org.apache.spark.sql.{Logging, SparkSession}
-import org.apache.spark.util.Utils
 
 /**
  * Default Authorizer implementation.
@@ -38,53 +36,28 @@ import org.apache.spark.util.Utils
  * which makes it unreachable for us to visit it in Spark's context classloader.
  *
  * Also, this will cause some issues with two [[SessionState]] instances in your application, such
- * as more mysql connections, `show tables` command may expose all tables including unexpected one.
+ * as more mysql connections.
  *
  */
 class DefaultAuthorizerImpl extends Logging {
-  private[this] def sparkSession =
-    SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession).get
+  private[this] def conf =
+    SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession).get.sparkContext.getConf
 
-  private[this] val hadoopConf = {
-    val conf = sparkSession.sparkContext.hadoopConfiguration
-    Seq("hive-site.xml", "ranger-hive-security.xml", "ranger-hive-audit.xml.xml")
-      .foreach { file =>
-        Option(Utils.getContextOrSparkClassLoader.getResource(file)).foreach(conf.addResource)
-      }
-
-    val dir = conf.get("ranger.plugin.hive.policy.cache.dir")
-    if (dir != null) {
-      val file = new File(dir)
-      if (!file.exists()) {
-        if (file.mkdirs()) {
-          info("Creating ranger policy cache directory at " + file.getAbsolutePath)
-          file.deleteOnExit()
-        } else {
-          warn("Unable to create ranger policy cache directory at "
-            + file.getAbsolutePath)
-        }
-      } else {
-        warn("Ranger policy cache directory already exists")
-      }
-    }
-    conf
-  }
-
-  SessionStateCacheManager.startCacheManager(hadoopConf)
+  SessionStateCacheManager.startCacheManager(conf)
 
   /**
    * Only a given [[SparkSession]] backed by Hive will involve privilege checking
    * @return
    */
-  private[this] val isHiveSessionState: Boolean = sparkSession.sparkContext
-    .getConf.getOption("spark.sql.catalogImplementation").exists(_.equals("hive"))
+  private[this] val isHiveSessionState: Boolean =
+    conf.getOption("spark.sql.catalogImplementation").exists(_.equals("hive"))
 
   def checkPrivileges(
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = if (isHiveSessionState) {
-    val s = SessionStateCacheManager.get().getState()
+    val s = SessionStateCacheManager.get().getState
     if (s != null) {
       Option(s.getAuthorizerV2) match {
         case Some(authz) =>

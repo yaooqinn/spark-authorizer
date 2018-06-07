@@ -27,6 +27,19 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.hive.SessionStateCacheManager
 import org.apache.spark.sql.types.{BooleanType, StringType}
 
+
+/**
+ * A command for users to get tables in the given database.
+ * If a databaseName is not given, the current database will be used.
+ * The syntax of using this command in SQL is:
+ * {{{
+ *   SHOW TABLES [(IN|FROM) database_name] [[LIKE] 'identifier_with_wildcards'];
+ *   SHOW TABLE EXTENDED [(IN|FROM) database_name] LIKE 'identifier_with_wildcards'
+ *   [PARTITION(partition_spec)];
+ * }}}
+ *
+ * NOTES: An authorized replacement for the original [[ShowTablesCommand]]
+ */
 case class AuthorizedShowTablesCommand(
     databaseName: Option[String],
     tableIdentifierPattern: Option[String]) extends RunnableCommand {
@@ -41,7 +54,7 @@ case class AuthorizedShowTablesCommand(
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
     val db = databaseName.getOrElse(catalog.getCurrentDatabase)
-    val state = SessionStateCacheManager.get().getState()
+    val state = SessionStateCacheManager.get().getState
     val tables = if (state != null) {
       val client = Hive.get(state.getConf)
       tableIdentifierPattern.map(client.getTablesByPattern(db, _))
@@ -49,6 +62,7 @@ case class AuthorizedShowTablesCommand(
     } else {
       tableIdentifierPattern.map(catalog.listTables(db, _)).getOrElse(catalog.listTables(db))
     }
+
     tables.map { tableIdent =>
       val isTemp = catalog.isTemporaryTable(tableIdent)
       Row(tableIdent.database.getOrElse(""), tableIdent.table, isTemp)

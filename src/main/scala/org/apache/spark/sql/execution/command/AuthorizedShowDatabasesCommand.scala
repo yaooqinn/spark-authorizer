@@ -26,6 +26,17 @@ import org.apache.spark.sql.catalyst.expressions.{Attribute, AttributeReference}
 import org.apache.spark.sql.hive.SessionStateCacheManager
 import org.apache.spark.sql.types.StringType
 
+/**
+ * A command for users to list the databases/schemas.
+ * If a databasePattern is supplied then the databases that only match the
+ * pattern would be listed.
+ * The syntax of using this command in SQL is:
+ * {{{
+ *   SHOW (DATABASES|SCHEMAS) [LIKE 'identifier_with_wildcards'];
+ * }}}
+ *
+ * NOTES: An authorized replacement for the original [[ShowDatabasesCommand]]
+ */
 case class AuthorizedShowDatabasesCommand(databasePattern: Option[String]) extends RunnableCommand {
 
   // The result of SHOW DATABASES has one column called 'databaseName'
@@ -35,7 +46,7 @@ case class AuthorizedShowDatabasesCommand(databasePattern: Option[String]) exten
 
   override def run(sparkSession: SparkSession): Seq[Row] = {
     val catalog = sparkSession.sessionState.catalog
-    val state = SessionStateCacheManager.get().getState()
+    val state = SessionStateCacheManager.get().getState
 
     val databases = if (state != null) {
       val client = Hive.get(state.getConf)
@@ -45,5 +56,4 @@ case class AuthorizedShowDatabasesCommand(databasePattern: Option[String]) exten
     }
     databases.map { d => Row(d) }
   }
-
 }

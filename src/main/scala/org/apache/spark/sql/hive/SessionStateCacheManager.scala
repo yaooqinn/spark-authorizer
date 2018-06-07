@@ -17,19 +17,22 @@
 
 package org.apache.spark.sql.hive
 
+import java.io.File
 import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
 
 import scala.collection.JavaConverters._
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.session.SessionState
 
+import org.apache.spark.SparkConf
+import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.Logging
 import org.apache.spark.util.{ShutdownHookManager, Utils}
 
-class SessionStateCacheManager(conf: Configuration) extends Logging {
+class SessionStateCacheManager(conf: SparkConf) extends Logging {
+
   private[this] val cacheManager =
     Executors.newSingleThreadScheduledExecutor(
       new ThreadFactoryBuilder()
@@ -41,17 +44,45 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
 
   private[this] def currentTime: Long = System.currentTimeMillis()
 
+  private[this] val hiveConf: HiveConf = {
+    val hadoopConf = SparkHadoopUtil.get.newConfiguration(conf)
+    Seq("hive-site.xml", "ranger-hive-security.xml", "ranger-hive-audit.xml.xml")
+      .foreach { file =>
+        Option(Utils.getContextOrSparkClassLoader.getResource(file)).foreach(hadoopConf.addResource)
+      }
+
+    val dir = hadoopConf.get("ranger.plugin.hive.policy.cache.dir")
+    if (dir != null) {
+      val file = new File(dir)
+      if (!file.exists()) {
+        if (file.mkdirs()) {
+          info("Creating ranger policy cache directory at " + file.getAbsolutePath)
+          file.deleteOnExit()
+        } else {
+          warn("Unable to create ranger policy cache directory at "
+            + file.getAbsolutePath)
+        }
+      } else {
+        warn("Ranger policy cache directory already exists")
+      }
+    }
+    val c = new HiveConf(hadoopConf, classOf[SessionState])
+    c.setBoolVar(HiveConf.ConfVars.HIVE_SESSION_HISTORY_ENABLED, false)
+    c
+  }
+
   /**
    * Get SPARK_USER
    */
   private[this] def currentUser: String = Utils.getCurrentUserName()
 
   private[this] val stateCleaner = new Runnable {
+    val timeout: Long = conf.getLong("spark.sql.authorizer.state.timeout", 60 * 60 * 1000L)
     override def run(): Unit = {
       userToState.asScala.foreach {
         case (user, state) =>
           val lastActive = userLastActive.getOrDefault(user, currentTime)
-          if (currentTime - lastActive > 10 * 60 * 1000) {
+          if (currentTime - lastActive > timeout) {
             userToState.remove(user)
             state.close()
             userLastActive.remove(user)
@@ -61,7 +92,7 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
     }
   }
 
-  def getState(): SessionState = {
+  def getState: SessionState = {
     val user = currentUser
     userLastActive.put(user, currentTime)
     val state = userToState.get(user)
@@ -78,8 +109,6 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
    */
   private[this] def newState(user: String): SessionState = {
     try {
-      val hiveConf = new HiveConf(conf, classOf[SessionState])
-      hiveConf.setBoolVar(HiveConf.ConfVars.HIVE_SESSION_HISTORY_ENABLED, false)
       val state = new SessionState(hiveConf, user)
       SessionState.start(state)
       state.setIsHiveServerQuery(true)
@@ -92,9 +121,11 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
   }
 
   def start(): Unit = {
-    val interval = 60
-    info(s"Scheduling SessionState cache cleaning every $interval seconds")
-    cacheManager.scheduleAtFixedRate(stateCleaner, interval, interval, TimeUnit.SECONDS)
+    val interval: Int = 60
+    if (conf.getBoolean("spark.sql.authorizer.state.clean.enable", true)) {
+      info(s"Scheduling SessionState cache cleaning every $interval seconds")
+      cacheManager.scheduleAtFixedRate(stateCleaner, interval, interval, TimeUnit.SECONDS)
+    }
     ShutdownHookManager.addShutdownHook(() => this.stop())
   }
 
@@ -110,7 +141,7 @@ class SessionStateCacheManager(conf: Configuration) extends Logging {
 object SessionStateCacheManager {
   private[this] var manager: SessionStateCacheManager = _
 
-  def startCacheManager(conf: Configuration): Unit = {
+  def startCacheManager(conf: SparkConf): Unit = {
     manager = new SessionStateCacheManager(conf)
     manager.start()
   }
