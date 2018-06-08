@@ -18,13 +18,16 @@
 package org.apache.spark.sql.hive
 
 import java.io.File
+import java.security.PrivilegedExceptionAction
 import java.util.concurrent.{ConcurrentHashMap, Executors, TimeUnit}
 
 import scala.collection.JavaConverters._
+import scala.util.control.NonFatal
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
 import org.apache.hadoop.hive.conf.HiveConf
 import org.apache.hadoop.hive.ql.session.SessionState
+import org.apache.hadoop.security.UserGroupInformation
 
 import org.apache.spark.SparkConf
 import org.apache.spark.deploy.SparkHadoopUtil
@@ -70,12 +73,14 @@ class SessionStateCacheManager(conf: SparkConf) extends Logging {
     c
   }
 
+  private[this] def currentUgi: UserGroupInformation = UserGroupInformation.getCurrentUser
+
   /**
    * Get SPARK_USER
    */
-  private[this] def currentUser: String = Utils.getCurrentUserName()
+  private[this] def currentUser: String = currentUgi.getShortUserName
 
-  private[this] val stateCleaner = new Runnable {
+  private[this] val stateCleaner: Runnable = new Runnable {
     val timeout: Long = conf.getLong("spark.sql.authorizer.state.timeout", 60 * 60 * 1000L)
     override def run(): Unit = {
       userToState.asScala.foreach {
@@ -83,13 +88,31 @@ class SessionStateCacheManager(conf: SparkConf) extends Logging {
           val lastActive = userLastActive.getOrDefault(user, currentTime)
           val idled = currentTime - lastActive
           if (idled > timeout) {
-            info("")
+            info(s"$user's SessionState has been idled for ${idled / 1000} seconds($timeout) ")
             userToState.remove(user)
-            state.close()
+            closeState(user, state)
             userLastActive.remove(user)
           }
         case _ =>
       }
+    }
+  }
+
+  private[this] def closeState(user: String, state: SessionState): Unit = {
+    try {
+      if (user != currentUser) {
+        val maybeRealUser = currentUgi.getRealUser
+        // TODO
+        val realUser = if (maybeRealUser == null) currentUgi else maybeRealUser
+        val proxyUser = UserGroupInformation.createProxyUser(user, realUser)
+        proxyUser.doAs(new PrivilegedExceptionAction[Unit] {
+          override def run(): Unit = state.close()
+        })
+      } else {
+        state.close()
+      }
+    } catch {
+      case NonFatal(e) => error(s"ERROR closing $user's SessionState", e)
     }
   }
 
@@ -133,7 +156,7 @@ class SessionStateCacheManager(conf: SparkConf) extends Logging {
   def stop(): Unit = {
     info("Stopping SessionState Cache Manager")
     cacheManager.shutdown()
-    userToState.asScala.values.foreach(_.close())
+    userToState.asScala.foreach(o => closeState(o._1, o._2))
     userToState.clear()
     userLastActive.clear()
   }
