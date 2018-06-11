@@ -21,7 +21,7 @@ import java.util.{List => JList}
 
 import scala.util.{Failure, Success, Try}
 
-import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
+import org.apache.hadoop.hive.ql.security.authorization.plugin._
 import org.apache.hadoop.hive.ql.session.SessionState
 
 import org.apache.spark.sql.{Logging, SparkSession}
@@ -49,11 +49,14 @@ object AuthorizerImpl extends Logging {
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = {
-    Option(getFiledVal(client, "state").asInstanceOf[SessionState].getAuthorizerV2) match {
+    val state = getFiledVal(client, "state")
+    val authzV2 = invoke(state, "getAuthorizerV2", Seq.empty, Seq.empty)
+    Option(authzV2) match {
       case Some(authz) =>
-        try {
-          authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
-        } catch {
+        try
+          authz.asInstanceOf[HiveAuthorizer]
+            .checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
+        catch {
           case hae: HiveAccessControlException =>
             error(
               s"""
@@ -78,6 +81,26 @@ object AuthorizerImpl extends Logging {
       val field = o.getClass.getDeclaredField(name)
       field.setAccessible(true)
       field.get(o)
+    } match {
+      case Success(value) => value
+      case Failure(exception) => throw exception
+    }
+  }
+
+  /**
+   * Invoke a method of an object via reflection
+   * @param o object
+   * @param name method name
+   * @param argTypes arguments class type
+   * @param params arguments object list
+   * @return
+   */
+  def invoke(o: Any, name: String, argTypes: Seq[Class[_]], params: Seq[AnyRef]): Any = {
+    require(o != null, "object could not be null!")
+    Try {
+      val method = o.getClass.getDeclaredMethod(name, argTypes: _*)
+      method.setAccessible(true)
+      method.invoke(o, params: _*)
     } match {
       case Success(value) => value
       case Failure(exception) => throw exception
