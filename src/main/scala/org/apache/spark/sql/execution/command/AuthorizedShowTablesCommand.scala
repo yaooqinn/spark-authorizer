@@ -25,7 +25,7 @@ import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.expressions.Attribute
-import org.apache.spark.sql.hive.SessionStateCacheManager
+import org.apache.spark.sql.hive.{HiveExternalCatalog, SessionStateCacheManager}
 
 
 /**

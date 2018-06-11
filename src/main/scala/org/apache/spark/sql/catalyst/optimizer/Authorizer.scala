@@ -20,11 +20,13 @@ package org.apache.spark.sql.catalyst.optimizer
 import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
 
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.hive.{DefaultAuthorizerImpl, HivePrivObjsFromPlan}
+import org.apache.spark.sql.hive.{DefaultAuthorizerImpl, HiveExternalCatalog, HivePrivObjsFromPlan}
+import org.apache.spark.sql.hive.client.SecuredHiveClientImpl
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 
 /**
@@ -53,17 +55,18 @@ object Authorizer extends Rule[LogicalPlan] {
     val hiveOperationType: HiveOperationType = getOperationType(plan)
     val hiveAuthzContext: HiveAuthzContext = getHiveAuthzContext(plan)
     val (in, out) = HivePrivObjsFromPlan.build(plan)
-    defaultAuthz.checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
-    // We just return the original plan here, so this rule will be executed only once
-    plan match {
-      case s: ShowDatabasesCommand => AuthorizedShowDatabasesCommand(s.databasePattern, s.output)
-      case s: ShowTablesCommand =>
-        AuthorizedShowTablesCommand(s.databaseName, s.tableIdentifierPattern, s.output)
-      case _ => plan
+    SparkSession.getActiveSession.foreach {s =>
+      val externalCatalog = s.sharedState.externalCatalog
+      externalCatalog match {
+        case catalog: HiveExternalCatalog =>
+          catalog.client.asInstanceOf[SecuredHiveClientImpl]
+            .checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
+        case _ =>
+      }
     }
+    // We just return the original plan here, so this rule will be executed only once
+    plan
   }
-
-  private lazy val defaultAuthz = new DefaultAuthorizerImpl
 
   /**
     * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
