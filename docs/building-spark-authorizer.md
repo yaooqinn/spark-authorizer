@@ -3,14 +3,8 @@
 Spark Authorizer is built using [Apache Maven](http://maven.apache.org). To build it, run:
 
 ```bash
-git clone https://github.com/yaooqinn/spark-authorizer.git
-cd spark-authorizer
-// choose a branch of your spark version
-git checkout spark-<spark.branch.version>
-mvn package
+mvn clean package
 ```
-
-## Apache Maven
 
 Notes from Spark: 
 > The Maven-based build is the build of reference for Apache Spark.
@@ -19,10 +13,16 @@ Note that support for Java 7 is deprecated as of Spark 2.0.0 and may be removed 
 
 So, I suggest you build this library using same Maven / Java / Scala.
 
-## Specifying Spark Authorization for Apache Spark
+## Building agaist different version of Apache Spark
 
-|Branch| Spark Version| Notes|
-|:---:|:---:|:---:|
-|master|master|periodically update to catch up|
-|spark-2.2|2.2.1| - |
-|spark-2.1|2.1.2| - |
+By default, spark authorizer is build agaist spark 2.1.x, which may be incampitable with other spark main branches.
+
+```bash
+# build for spark 2.2.x
+maven clean package -Pspark-2.2
+```
+
+```bash
+# build for spark 2.3.x
+maven clean package -Pspark-2.3
+```
