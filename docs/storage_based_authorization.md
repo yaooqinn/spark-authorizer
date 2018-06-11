@@ -1,4 +1,4 @@
-# Storage-Based Authorization Guide
+# Spark SQL Storage-Based Authorization Guide
 
 Storage-Based Authorization is one of the available Authorization methods for Spark SQL with or without [spark-authorizer](https://github.com/yaooqinn/spark-authorizer).
 
@@ -6,7 +6,7 @@ When the `Hive Metastore Server` is configured to use Storage-Based Authorizatio
 
 With Hive Metastore as the external catalog for Spark SQL, there is a corresponding directory to a database or table for each file system that is used at storage layer. Using this authorization model, the rwx permissions for this directory also determines the permissions of a user, or group, to the database or table.
 
-With Hive 0.14 or onwards as Spark SQL's metastore client, this could be enabled without spark-authorizer's support.
+With Hive 0.14 or onwards as Spark SQL's metastore client, this could be enabled without [spark-authorizer](https://github.com/yaooqinn/spark-authorizer)'s support.
 
 
 ## Configuring Parameters for Storage-Based Authorization
@@ -28,7 +28,6 @@ This could be Spark SQL Client, Spark Thrift Server, HiveServer2, Kyuubi etc. Co
 
 Configuration| Description
 ---|---
-`hive.server2.enable.doAs`  |  The value controls whether the queries are run as the service user id of HiverServer2 (false) or as the user who submitted the query (true).
 `hive.security.authorization.enabled` | Enables or disables authorization. In the Advanced hiveserver-site section, change the value to true to enable authorization for HiveServer2. In the General section, set this value to false.
 `hive.security.authorization.manager` | The class name of the Hive client authorization manager. For storage-based authorization, specify the value `org.apache.hadoop.hive.ql.security. authorization.StorageBasedAuthorizationProvider`
 
