@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.hive
+package org.apache.spark.sql.hive.client
 
 import java.util.{List => JList}
 
@@ -39,27 +39,15 @@ import org.apache.spark.sql.{Logging, SparkSession}
  * as more mysql connections.
  *
  */
-class DefaultAuthorizerImpl extends Logging {
-  private[this] def conf =
-    SparkSession.getActiveSession.orElse(SparkSession.getDefaultSession).get.sparkContext.getConf
-
-  SessionStateCacheManager.startCacheManager(conf)
-
-  /**
-   * Only a given [[SparkSession]] backed by Hive will involve privilege checking
-   * @return
-   */
-  private[this] val isHiveSessionState: Boolean =
-    conf.getOption("spark.sql.catalogImplementation").exists(_.equals("hive"))
+object AuthorizerImpl extends Logging {
 
   def checkPrivileges(
+      client: HiveClient,
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
-      context: HiveAuthzContext): Unit = if (isHiveSessionState) {
-    val s = SessionStateCacheManager.get().getState
-    if (s != null) {
-      Option(s.getAuthorizerV2) match {
+      context: HiveAuthzContext): Unit = {
+      Option(client.asInstanceOf[HiveClientImpl].state.getAuthorizerV2) match {
         case Some(authz) =>
           try {
             authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
@@ -82,6 +70,5 @@ class DefaultAuthorizerImpl extends Logging {
           warn("Authorizer V2 not configured.")
       }
     }
-  }
 }
 

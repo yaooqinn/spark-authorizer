@@ -17,16 +17,20 @@
 
 package org.apache.spark.sql.catalyst.optimizer
 
+import java.io.File
+
 import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
+import org.apache.spark.SparkConf
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.deploy.SparkHadoopUtil
+import org.apache.spark.sql.{Logging, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.hive.{DefaultAuthorizerImpl, HiveExternalCatalog, HivePrivObjsFromPlan}
-import org.apache.spark.sql.hive.client.SecuredHiveClientImpl
+import org.apache.spark.sql.hive.{HiveExternalCatalog, HivePrivObjsFromPlan}
+import org.apache.spark.sql.hive.client.AuthorizerImpl
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 
 /**
@@ -40,7 +44,7 @@ import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
  *   5. spark.experimental.extraOptimizations ++= Seq(Authorizer)
  *   6. then suffer for the authorizing pain
  */
-object Authorizer extends Rule[LogicalPlan] {
+object Authorizer extends Rule[LogicalPlan] with Logging {
 
   /**
    * Visit the [[LogicalPlan]] recursively to get all hive privilege objects, check the privileges
@@ -52,20 +56,36 @@ object Authorizer extends Rule[LogicalPlan] {
    * @return a plan itself which has gone through the privilege check.
    */
   override def apply(plan: LogicalPlan): LogicalPlan = {
-    val hiveOperationType: HiveOperationType = getOperationType(plan)
-    val hiveAuthzContext: HiveAuthzContext = getHiveAuthzContext(plan)
+    val operationType: HiveOperationType = getOperationType(plan)
+    val authzContext: HiveAuthzContext = getHiveAuthzContext(plan)
     val (in, out) = HivePrivObjsFromPlan.build(plan)
     SparkSession.getActiveSession.foreach {s =>
       val externalCatalog = s.sharedState.externalCatalog
       externalCatalog match {
         case catalog: HiveExternalCatalog =>
-          catalog.client.asInstanceOf[SecuredHiveClientImpl]
-            .checkPrivileges(hiveOperationType, in, out, hiveAuthzContext)
+          AuthorizerImpl.checkPrivileges(catalog.client, operationType, in, out, authzContext)
         case _ =>
       }
     }
     // We just return the original plan here, so this rule will be executed only once
     plan
+  }
+
+  val dir =
+    SparkHadoopUtil.get.newConfiguration(new SparkConf).get("ranger.plugin.hive.policy.cache.dir")
+
+  if (dir != null) {
+    val file = new File(dir)
+    if (!file.exists()) {
+      if (file.mkdirs()) {
+        info("Creating ranger policy cache directory at " + file.getAbsolutePath)
+        file.deleteOnExit()
+      } else {
+        warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
+      }
+    } else {
+      warn("Ranger policy cache directory already exists")
+    }
   }
 
   /**
