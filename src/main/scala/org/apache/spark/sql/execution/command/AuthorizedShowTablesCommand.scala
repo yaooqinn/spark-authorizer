@@ -20,6 +20,7 @@ package org.apache.spark.sql.execution.command
 import scala.collection.JavaConverters._
 
 import org.apache.hadoop.hive.ql.metadata.Hive
+import org.apache.hadoop.hive.ql.session.SessionState
 
 import org.apache.spark.sql.{Row, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
@@ -50,6 +51,7 @@ case class AuthorizedShowTablesCommand(
     val state = SessionStateCacheManager.get().getState
     val tables = if (state != null) {
       val client = Hive.get(state.getConf)
+      SessionState.setCurrentSessionState(state)
       tableIdentifierPattern.map(client.getTablesByPattern(db, _))
         .getOrElse(client.getAllTables(db)).asScala.map(TableIdentifier(_, Some(db)))
     } else {
