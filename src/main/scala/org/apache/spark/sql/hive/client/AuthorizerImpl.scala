@@ -19,6 +19,8 @@ package org.apache.spark.sql.hive.client
 
 import java.util.{List => JList}
 
+import scala.util.{Failure, Success, Try}
+
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
 import org.apache.hadoop.hive.ql.session.SessionState
 
@@ -47,28 +49,39 @@ object AuthorizerImpl extends Logging {
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = {
-      Option(client.asInstanceOf[HiveClientImpl].state.getAuthorizerV2) match {
-        case Some(authz) =>
-          try {
-            authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
-          } catch {
-            case hae: HiveAccessControlException =>
-              error(
-                s"""
-                   |+===============================+
-                   ||Spark SQL Authorization Failure|
-                   ||-------------------------------|
-                   ||${hae.getMessage}
-                   ||-------------------------------|
-                   ||Spark SQL Authorization Failure|
-                   |+===============================+
-                 """.stripMargin)
-              throw hae
-            case e: Exception => throw e
-          }
-        case None =>
-          warn("Authorizer V2 not configured.")
-      }
+    Option(getFiledVal(client, "state").asInstanceOf[SessionState].getAuthorizerV2) match {
+      case Some(authz) =>
+        try {
+          authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
+        } catch {
+          case hae: HiveAccessControlException =>
+            error(
+              s"""
+                 |+===============================+
+                 ||Spark SQL Authorization Failure|
+                 ||-------------------------------|
+                 ||${hae.getMessage}
+                 ||-------------------------------|
+                 ||Spark SQL Authorization Failure|
+                 |+===============================+
+               """.stripMargin)
+            throw hae
+          case e: Exception => throw e
+        }
+      case None =>
+        warn("Authorizer V2 not configured.")
     }
+  }
+
+  def getFiledVal(o: Any, name: String): Any = {
+    Try {
+      val field = o.getClass.getDeclaredField(name)
+      field.setAccessible(true)
+      field.get(o)
+    } match {
+      case Success(value) => value
+      case Failure(exception) => throw exception
+    }
+  }
 }
 
