@@ -49,38 +49,30 @@ object AuthorizerImpl extends Logging {
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = {
-    val clientLoader = getFiledVal(client, "clientLoader").asInstanceOf[IsolatedClientLoader]
-    val originClassLoader = Thread.currentThread().getContextClassLoader
-    val hiveClassLoader = clientLoader.classLoader
-    try {
-      Thread.currentThread().setContextClassLoader(hiveClassLoader)
-      val state = getFiledVal(client, "state")
-      val authzV2 = invoke(state, "getAuthorizerV2", Seq.empty, Seq.empty)
-      val authz = authzV2.asInstanceOf[HiveAuthorizer]
-      if (authz != null) {
-        try {
-          authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
-        } catch {
-          case hae: HiveAccessControlException =>
-            error(
-              s"""
-                 |+===============================+
-                 ||Spark SQL Authorization Failure|
-                 ||-------------------------------|
-                 ||${hae.getMessage}
-                 ||-------------------------------|
-                 ||Spark SQL Authorization Failure|
-                 |+===============================+
-               """.stripMargin)
-            throw hae
-          case e: Exception => throw e
-        }
-
-      } else {
-        warn("Authorizer V2 not configured. Skipping privilege checking")
+    val state = getFiledVal(client, "state")
+    val authzV2 = invoke(state, "getAuthorizerV2", Seq.empty, Seq.empty)
+    val authz = authzV2.asInstanceOf[HiveAuthorizer]
+    if (authz != null) {
+      try {
+        authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
+      } catch {
+        case hae: HiveAccessControlException =>
+          error(
+            s"""
+               |+===============================+
+               ||Spark SQL Authorization Failure|
+               ||-------------------------------|
+               ||${hae.getMessage}
+               ||-------------------------------|
+               ||Spark SQL Authorization Failure|
+               |+===============================+
+             """.stripMargin)
+          throw hae
+        case e: Exception => throw e
       }
-    } finally {
-      Thread.currentThread().setContextClassLoader(originClassLoader)
+
+    } else {
+      warn("Authorizer V2 not configured. Skipping privilege checking")
     }
   }
 

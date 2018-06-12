@@ -21,8 +21,8 @@ import java.io.File
 
 import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
-import org.apache.spark.SparkConf
 
+import org.apache.spark.SparkConf
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.{Logging, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical._
