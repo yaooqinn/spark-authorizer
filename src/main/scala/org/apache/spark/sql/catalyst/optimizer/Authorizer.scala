@@ -63,7 +63,7 @@ object Authorizer extends Rule[LogicalPlan] with Logging {
       val externalCatalog = s.sharedState.externalCatalog
       externalCatalog match {
         case catalog: HiveExternalCatalog =>
-          AuthorizerImpl.checkPrivileges(catalog.client, operationType, in, out, authzContext)
+          AuthorizerImpl.checkPrivileges(s, operationType, in, out, authzContext)
         case _ =>
       }
     }

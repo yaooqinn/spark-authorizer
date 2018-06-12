@@ -46,16 +46,16 @@ object AuthorizerImpl extends Logging {
 
   def checkPrivileges(
       spark: SparkSession,
-      client: HiveClient,
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = {
+    val client = spark
+      .sharedState
+      .externalCatalog.asInstanceOf[HiveExternalCatalog]
+      .client
     val clientImpl = try {
-      spark
-        .sharedState
-        .externalCatalog.asInstanceOf[HiveExternalCatalog]
-        .client.asInstanceOf[HiveClientImpl]
+      client.asInstanceOf[HiveClientImpl]
     } catch {
       case _: ClassCastException =>
         val clientLoader = getFiledVal(client, "clientLoader").asInstanceOf[IsolatedClientLoader]
