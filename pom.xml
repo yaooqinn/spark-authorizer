@@ -130,10 +130,6 @@
                 </exclusion>
                 <exclusion>
                     <groupId>${spark.group}</groupId>
-                    <artifactId>spark-network-common_${scala.binary.version}</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>${spark.group}</groupId>
                     <artifactId>spark-network-shuffle_${scala.binary.version}</artifactId>
                 </exclusion>
                 <exclusion>

@@ -19,11 +19,11 @@ package org.apache.spark.sql.catalyst.optimizer
 
 import java.util.{List => JList}
 
-import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HivePrivilegeObject => HBO}
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.{HivePrivilegeObjectType, HivePrivObjectActionType}
 
 /**
- * Helper class for initializing [[HivePrivilegeObject]] with more Constructors.
+ * Helper class for initializing [[HBO]] with more Constructors.
  */
 private[sql] object HivePrivilegeObject {
   def apply(
@@ -33,8 +33,8 @@ private[sql] object HivePrivilegeObject {
       partKeys: JList[String],
       columns: JList[String],
       actionType: HivePrivObjectActionType,
-      commandParams: JList[String]): HivePrivilegeObject = {
-    new HivePrivilegeObject(
+      commandParams: JList[String]): HBO = {
+    new HBO(
       `type`, dbname, objectName, partKeys, columns, actionType, commandParams)
   }
 
@@ -44,7 +44,7 @@ private[sql] object HivePrivilegeObject {
       objectName: String,
       partKeys: JList[String],
       columns: JList[String],
-      commandParams: JList[String]): HivePrivilegeObject = {
+      commandParams: JList[String]): HBO = {
     apply(
       `type`, dbname, objectName, partKeys, columns, HivePrivObjectActionType.OTHER, commandParams)
   }
@@ -54,7 +54,7 @@ private[sql] object HivePrivilegeObject {
       dbname: String,
       objectName: String,
       partKeys: JList[String],
-      columns: JList[String]): HivePrivilegeObject = {
+      columns: JList[String]): HBO = {
     apply(
       `type`, dbname, objectName, partKeys, columns, HivePrivObjectActionType.OTHER, null)
   }
@@ -63,14 +63,14 @@ private[sql] object HivePrivilegeObject {
       `type`: HivePrivilegeObjectType,
       dbname: String,
       objectName: String,
-      actionType: HivePrivObjectActionType): HivePrivilegeObject = {
+      actionType: HivePrivObjectActionType): HBO = {
     apply(`type`, dbname, objectName, null, null, actionType, null)
   }
 
   def apply(
       `type`: HivePrivilegeObjectType,
       dbname: String,
-      objectName: String): HivePrivilegeObject = {
+      objectName: String): HBO = {
     apply(`type`, dbname, objectName, HivePrivObjectActionType.OTHER)
   }
 }
