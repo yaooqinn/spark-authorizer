@@ -25,7 +25,7 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObje
 /**
  * Helper class for initializing [[HivePrivilegeObject]] with more Constructors.
  */
-private[sql] object HivePrivilegeObjectHelper {
+private[sql] object HivePrivilegeObject {
   def apply(
       `type`: HivePrivilegeObjectType,
       dbname: String,

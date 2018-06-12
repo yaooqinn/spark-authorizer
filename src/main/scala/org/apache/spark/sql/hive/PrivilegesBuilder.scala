@@ -20,7 +20,6 @@ package org.apache.spark.sql.hive
 import java.util.{ArrayList => JAList, List => JList}
 
 import scala.collection.JavaConverters._
-import scala.util.{Failure, Success, Try}
 
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.{HivePrivilegeObjectType, HivePrivObjectActionType}
@@ -30,18 +29,31 @@ import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
 import org.apache.spark.sql.catalyst.expressions.NamedExpression
-import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObjectHelper
+import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObject
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
+import org.apache.spark.sql.hive.AuthzUtils._
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 import org.apache.spark.sql.types.StructField
 
 /**
  * [[LogicalPlan]] -> list of [[HivePrivilegeObject]]s
  */
-private[sql] object HivePrivObjsFromPlan {
+private[sql] object PrivilegesBuilder {
 
+  /**
+   * Build input and output privilege objects from a Spark's [[LogicalPlan]]
+   *
+   * For [[ExplainCommand]]s, build its child.
+   * For [[RunnableCommand]]s, build outputs if it has an target to write, build inputs for the
+   * inside query if exists.
+   *
+   * For other queries, build inputs.
+   *
+   * @param plan
+   * @return
+   */
   def build(plan: LogicalPlan): (JList[HivePrivilegeObject], JList[HivePrivilegeObject]) = {
 
     def doBuild(plan: LogicalPlan): (JList[HivePrivilegeObject], JList[HivePrivilegeObject]) = {
@@ -50,6 +62,7 @@ private[sql] object HivePrivObjsFromPlan {
       plan match {
         // RunnableCommand
         case cmd: Command => buildCommand(cmd, inputObjs, outputObjs)
+        // Queries
         case _ => buildQuery(plan, inputObjs)
       }
       (inputObjs, outputObjs)
@@ -59,7 +72,6 @@ private[sql] object HivePrivObjsFromPlan {
       case e: ExplainCommand => doBuild(e.logicalPlan)
       case p => doBuild(p)
     }
-
   }
 
   /**
@@ -68,7 +80,7 @@ private[sql] object HivePrivObjsFromPlan {
    * @param hivePrivilegeObjects input or output hive privilege object list
    * @param projectionList Projection list after pruning
    */
-  private def buildQuery(
+  private[this] def buildQuery(
       plan: LogicalPlan,
       hivePrivilegeObjects: JList[HivePrivilegeObject],
       projectionList: Seq[NamedExpression] = null): Unit = {
@@ -359,7 +371,7 @@ private[sql] object HivePrivObjsFromPlan {
       dbName: String,
       hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
     hivePrivilegeObjects.add(
-      HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, dbName, dbName))
+      HivePrivilegeObject(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
 
   /**
@@ -373,7 +385,7 @@ private[sql] object HivePrivObjsFromPlan {
     dbOption match {
       case Some(db) =>
         hivePrivilegeObjects.add(
-          HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, db, db))
+          HivePrivilegeObject(HivePrivilegeObjectType.DATABASE, db, db))
       case _ =>
     }
   }
@@ -389,7 +401,7 @@ private[sql] object HivePrivObjsFromPlan {
     tableIdentifier.database match {
       case Some(db) =>
         hivePrivilegeObjects.add(
-          HivePrivilegeObjectHelper(HivePrivilegeObjectType.DATABASE, db, db))
+          HivePrivilegeObject(HivePrivilegeObjectType.DATABASE, db, db))
       case _ =>
     }
   }
@@ -413,7 +425,7 @@ private[sql] object HivePrivObjsFromPlan {
         val tbName = tableIdentifier.table
         val hivePrivObjectActionType = getHivePrivObjActionType(mode)
         hivePrivilegeObjects.add(
-          HivePrivilegeObjectHelper(
+          HivePrivilegeObject(
             HivePrivilegeObjectType.TABLE_OR_VIEW,
             db,
             tbName,
@@ -438,7 +450,7 @@ private[sql] object HivePrivObjsFromPlan {
     databaseName match {
       case Some(db) =>
         hivePrivilegeObjects.add(
-          HivePrivilegeObjectHelper(HivePrivilegeObjectType.FUNCTION, db, functionName))
+          HivePrivilegeObject(HivePrivilegeObjectType.FUNCTION, db, functionName))
       case _ =>
     }
   }
@@ -454,17 +466,6 @@ private[sql] object HivePrivObjsFromPlan {
       case SaveMode.Append => HivePrivObjectActionType.INSERT
       case SaveMode.Overwrite => HivePrivObjectActionType.INSERT_OVERWRITE
       case _ => HivePrivObjectActionType.OTHER
-    }
-  }
-
-  private[this] def getFieldVal(o: Any, name: String): Any = {
-    Try {
-      val field = o.getClass.getDeclaredField(name)
-      field.setAccessible(true)
-      field.get(o)
-    } match {
-      case Success(value) => value
-      case Failure(exception) => throw exception
     }
   }
 }

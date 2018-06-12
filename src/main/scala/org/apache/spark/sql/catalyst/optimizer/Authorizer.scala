@@ -29,8 +29,8 @@ import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources._
-import org.apache.spark.sql.hive.{HiveExternalCatalog, HivePrivObjsFromPlan}
-import org.apache.spark.sql.hive.client.AuthorizerImpl
+import org.apache.spark.sql.hive.{HiveExternalCatalog, PrivilegesBuilder}
+import org.apache.spark.sql.hive.client.AuthzImpl
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 
 /**
@@ -58,12 +58,12 @@ object Authorizer extends Rule[LogicalPlan] with Logging {
   override def apply(plan: LogicalPlan): LogicalPlan = {
     val operationType: HiveOperationType = getOperationType(plan)
     val authzContext: HiveAuthzContext = getHiveAuthzContext(plan)
-    val (in, out) = HivePrivObjsFromPlan.build(plan)
+    val (in, out) = PrivilegesBuilder.build(plan)
     SparkSession.getActiveSession.foreach {s =>
       val externalCatalog = s.sharedState.externalCatalog
       externalCatalog match {
-        case catalog: HiveExternalCatalog =>
-          AuthorizerImpl.checkPrivileges(s, operationType, in, out, authzContext)
+        case _: HiveExternalCatalog =>
+          AuthzImpl.checkPrivileges(s, operationType, in, out, authzContext)
         case _ =>
       }
     }

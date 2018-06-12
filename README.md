@@ -1,7 +1,5 @@
 
-# Spark Authorizer
-
-[![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
+# Spark Authorizer [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer) [![HitCount](http://hits.dwyl.io/yaooqinn/spark-authorizer.svg)](http://hits.dwyl.io/yaooqinn/spark-authorizer)
 
 **Spark Authorizer** provides you with *SQL Standard Based Authorization* for [Apache Spark™](http://spark.apache.org) 
 like [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
