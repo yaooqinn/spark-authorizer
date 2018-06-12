@@ -21,7 +21,7 @@ import java.util.{ArrayList => JAList, List => JList}
 
 import scala.collection.JavaConverters._
 
-import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HivePrivilegeObject => HPO}
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.{HivePrivilegeObjectType, HivePrivObjectActionType}
 
 import org.apache.spark.sql.SaveMode
@@ -51,14 +51,13 @@ private[sql] object PrivilegesBuilder {
    *
    * For other queries, build inputs.
    *
-   * @param plan
-   * @return
+   * @param plan A Spark [[LogicalPlan]]
    */
-  def build(plan: LogicalPlan): (JList[HivePrivilegeObject], JList[HivePrivilegeObject]) = {
+  def build(plan: LogicalPlan): (JList[HPO], JList[HPO]) = {
 
-    def doBuild(plan: LogicalPlan): (JList[HivePrivilegeObject], JList[HivePrivilegeObject]) = {
-      val inputObjs = new JAList[HivePrivilegeObject]
-      val outputObjs = new JAList[HivePrivilegeObject]
+    def doBuild(plan: LogicalPlan): (JList[HPO], JList[HPO]) = {
+      val inputObjs = new JAList[HPO]
+      val outputObjs = new JAList[HPO]
       plan match {
         // RunnableCommand
         case cmd: Command => buildCommand(cmd, inputObjs, outputObjs)
@@ -82,7 +81,7 @@ private[sql] object PrivilegesBuilder {
    */
   private[this] def buildQuery(
       plan: LogicalPlan,
-      hivePrivilegeObjects: JList[HivePrivilegeObject],
+      hivePrivilegeObjects: JList[HPO],
       projectionList: Seq[NamedExpression] = null): Unit = {
 
     /**
@@ -140,8 +139,8 @@ private[sql] object PrivilegesBuilder {
    */
   private[this] def buildCommand(
       plan: LogicalPlan,
-      inputObjs: JList[HivePrivilegeObject],
-      outputObjs: JList[HivePrivilegeObject]): Unit = {
+      inputObjs: JList[HPO],
+      outputObjs: JList[HPO]): Unit = {
     plan match {
       case a: AlterDatabasePropertiesCommand => addDbLevelObjs(a.databaseName, outputObjs)
 
@@ -369,7 +368,7 @@ private[sql] object PrivilegesBuilder {
    */
   private[this] def addDbLevelObjs(
       dbName: String,
-      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+      hivePrivilegeObjects: JList[HPO]): Unit = {
     hivePrivilegeObjects.add(
       HivePrivilegeObject(HivePrivilegeObjectType.DATABASE, dbName, dbName))
   }
@@ -381,7 +380,7 @@ private[sql] object PrivilegesBuilder {
    */
   private def addDbLevelObjs(
       dbOption: Option[String],
-      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+      hivePrivilegeObjects: JList[HPO]): Unit = {
     dbOption match {
       case Some(db) =>
         hivePrivilegeObjects.add(
@@ -397,7 +396,7 @@ private[sql] object PrivilegesBuilder {
    */
   private def addDbLevelObjs(
       tableIdentifier: TableIdentifier,
-      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+      hivePrivilegeObjects: JList[HPO]): Unit = {
     tableIdentifier.database match {
       case Some(db) =>
         hivePrivilegeObjects.add(
@@ -415,7 +414,7 @@ private[sql] object PrivilegesBuilder {
    */
   private def addTableOrViewLevelObjs(
       tableIdentifier: TableIdentifier,
-      hivePrivilegeObjects: JList[HivePrivilegeObject],
+      hivePrivilegeObjects: JList[HPO],
       partKeys: Seq[String] = null,
       columns: Seq[String] = null,
       mode: SaveMode = SaveMode.ErrorIfExists,
@@ -446,7 +445,7 @@ private[sql] object PrivilegesBuilder {
   private def addFunctionLevelObjs(
       databaseName: Option[String],
       functionName: String,
-      hivePrivilegeObjects: JList[HivePrivilegeObject]): Unit = {
+      hivePrivilegeObjects: JList[HPO]): Unit = {
     databaseName match {
       case Some(db) =>
         hivePrivilegeObjects.add(
