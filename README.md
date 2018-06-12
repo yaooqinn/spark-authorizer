@@ -13,13 +13,13 @@ it is very difficult to guarantee data management in a consistent way.  Apache S
 with Storage based access controls offered by HDFS. This library shares [Ranger Hive plugin](https://cwiki.apache.org/confluence/display/RANGER/Apache+Ranger+0.5.0+Installation#ApacheRanger0.5.0Installation-InstallingApacheHive(1.2.0)) 
 with Hive to help Spark talking to Ranger Admin. 
 
-Please refer to [ACL Management for Spark SQL](docs/spark_sql_authorization.md) to see what spark-authorizer support.
+Please refer to [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html) to see what spark-authorizer support.
 
 ---
 
 ## Build
 
-Refer to [Building Spark Authorizer](docs/building-spark-authorizer.md)
+Refer to [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer/docs/building-spark-authorizer.html)
 
 ---
 

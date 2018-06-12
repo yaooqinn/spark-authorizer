@@ -4,7 +4,7 @@
 
 The [spark-authorizer](https://github.com/yaooqinn/spark-authorizer) can enable Spark SQL with Hive's [SQL-Standard Based Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization) for fine grained access control. It is based on the SQL standard for authorization, and uses the familiar GRANT/REVOKE statements to control access.
 
-For Spark SQL Client users who can directly acess HDFS, the SQL-Standards Based Authorization can be easily bypassed.
+For Spark SQL Client users who can directly access HDFS, the SQL-Standards Based Authorization can be easily bypassed.
 
 With [Kyuubi](https://github.com/yaooqinn/kyuubi), the SQL-Standard Based Authorization is guaranteed for the security configurations, metadata, and storage informations are preserved from end users. It can be used along with storage based authorization on the `Hive Metastore Server`.
 
