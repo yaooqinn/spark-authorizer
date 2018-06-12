@@ -60,12 +60,12 @@ object AuthorizerImpl extends Logging {
       case _: ClassCastException =>
         val clientLoader = getFiledVal(client, "clientLoader").asInstanceOf[IsolatedClientLoader]
         setFieldVal(clientLoader, "isolationOn", false)
+        clientLoader.cachedHive = null
         val newClient = clientLoader.createClient()
         setFieldVal(
           spark.sharedState.externalCatalog.asInstanceOf[HiveExternalCatalog],
           "client",
           newClient)
-        clientLoader.cachedHive = null
         newClient.asInstanceOf[HiveClientImpl]
     }
 
