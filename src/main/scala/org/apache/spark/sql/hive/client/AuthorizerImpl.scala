@@ -25,6 +25,7 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin._
 import org.apache.hadoop.hive.ql.session.SessionState
 
 import org.apache.spark.sql.{Logging, SparkSession}
+import org.apache.spark.sql.hive.HiveExternalCatalog
 
 /**
  * Default Authorizer implementation.
@@ -44,14 +45,30 @@ import org.apache.spark.sql.{Logging, SparkSession}
 object AuthorizerImpl extends Logging {
 
   def checkPrivileges(
+      spark: SparkSession,
       client: HiveClient,
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = {
-    val state = getFiledVal(client, "state")
-    val authzV2 = invoke(state, "getAuthorizerV2", Seq.empty, Seq.empty)
-    val authz = authzV2.asInstanceOf[HiveAuthorizer]
+    val clientImpl = try {
+      spark
+        .sharedState
+        .externalCatalog.asInstanceOf[HiveExternalCatalog]
+        .client.asInstanceOf[HiveClientImpl]
+    } catch {
+      case _: ClassCastException =>
+        val clientLoader = getFiledVal(client, "clientLoader").asInstanceOf[IsolatedClientLoader]
+        setFieldVal(clientLoader, "isolationOn", false)
+        val newClient = clientLoader.createClient()
+        setFieldVal(
+          spark.sharedState.externalCatalog.asInstanceOf[HiveExternalCatalog],
+          "client",
+          newClient)
+        newClient.asInstanceOf[HiveClientImpl]
+    }
+
+    val authz = clientImpl.state.getAuthorizerV2
     if (authz != null) {
       try {
         authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
@@ -66,7 +83,7 @@ object AuthorizerImpl extends Logging {
                ||-------------------------------|
                ||Spark SQL Authorization Failure|
                |+===============================+
-             """.stripMargin)
+               """.stripMargin)
           throw hae
         case e: Exception => throw e
       }
@@ -88,22 +105,16 @@ object AuthorizerImpl extends Logging {
   }
 
   /**
-   * Invoke a method of an object via reflection
-   * @param o object
-   * @param name method name
-   * @param argTypes arguments class type
-   * @param params arguments object list
-   * @return
+   * Set field for an object
    */
-  def invoke(o: Any, name: String, argTypes: Seq[Class[_]], params: Seq[AnyRef]): Any = {
-    require(o != null, "object could not be null!")
+  def setFieldVal(o: Any, name: String, value: Any): Unit = {
     Try {
-      val method = o.getClass.getDeclaredMethod(name, argTypes: _*)
-      method.setAccessible(true)
-      method.invoke(o, params: _*)
+      val field = o.getClass.getDeclaredField(name)
+      field.setAccessible(true)
+      field.set(o, value.asInstanceOf[AnyRef])
     } match {
-      case Success(value) => value
       case Failure(exception) => throw exception
+      case _ =>
     }
   }
 }
