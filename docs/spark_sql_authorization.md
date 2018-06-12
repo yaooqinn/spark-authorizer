@@ -20,7 +20,7 @@ With [Kyuubi](https://github.com/yaooqinn/kyuubi), the SQL-Standard Based Author
 
 Please refer to the [SQL-Standard Based Authorization Guide](https://yaooqinn.github.io/spark-authorizer/docs/sql_std_based_authorization.html) in the online documentation for an overview on how to configure SQL-Standard Based Authorization for Spark SQL.
 
-## Ranger
+## Ranger Security Support 
 
 [Apache Ranger](https://ranger.apache.org/)  is a framework to enable, monitor and manage comprehensive data security across the Hadoop platform but end before Spark or Spark SQL. The [spark-authorizer](https://github.com/yaooqinn/spark-authorizer) enables Spark SQL with control access ability reusing [Ranger Plugin for Hive MetaStore
 ](https://cwiki.apache.org/confluence/display/RANGER/Ranger+Plugin+for+Hive+MetaStore). [Apache Ranger](https://ranger.apache.org/) makes the scope of existing SQL-Standard Based Authorization expanded but without supporting Spark SQL. [spark-authorizer](https://github.com/yaooqinn/spark-authorizer) sticks them together.
