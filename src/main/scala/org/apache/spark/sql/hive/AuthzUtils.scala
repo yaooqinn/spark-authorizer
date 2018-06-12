@@ -15,30 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package org.apache.spark.sql.hive
 
-import java.util.{List => JList}
+import scala.util.{Failure, Success, Try}
 
-import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType, HivePrivilegeObject}
+private[hive] object AuthzUtils {
 
-/**
- * a trait for implementations which use hive privilege objects to authorize.
- */
-trait Authorizable {
+  def getFieldVal(o: Any, name: String): Any = {
+    Try {
+      val field = o.getClass.getDeclaredField(name)
+      field.setAccessible(true)
+      field.get(o)
+    } match {
+      case Success(value) => value
+      case Failure(exception) => throw exception
+    }
+  }
 
-  /**
-   * Check privileges using hive privilege objects
-   */
-  def checkPrivileges(
-      hiveOpType: HiveOperationType,
-      inputObjs: JList[HivePrivilegeObject],
-      outputObjs: JList[HivePrivilegeObject],
-      context: HiveAuthzContext): Unit
-
-  /**
-   * get the current database name
-   * @return database name
-   */
-  def currentDatabase(): String
-
+  def setFieldVal(o: Any, name: String, value: Any): Unit = {
+    Try {
+      val field = o.getClass.getDeclaredField(name)
+      field.setAccessible(true)
+      field.set(o, value.asInstanceOf[AnyRef])
+    } match {
+      case Failure(exception) => throw exception
+      case _ =>
+    }
+  }
 }

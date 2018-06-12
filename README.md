@@ -1,12 +1,10 @@
 
-# Spark Authorizer
-
-[![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer)
+# Spark Authorizer [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer) [![HitCount](http://hits.dwyl.io/yaooqinn/spark-authorizer.svg)](http://hits.dwyl.io/yaooqinn/spark-authorizer)
 
 **Spark Authorizer** provides you with *SQL Standard Based Authorization* for [Apache Spark™](http://spark.apache.org) 
 like [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
 While you are using Spark SQL or Dataset/DataFrame API to load data from tables embedded with [Apache Hive™](https://hive.apache.org) metastore, 
-this library provides row/column level fine-grained access controls with [Apache Ranger™](https://ranger.apache.org).
+this library provides row/column level fine-grained access controls with [Apache Ranger™](https://ranger.apache.org) or Hive SQL Standard Based Authorization.
 
 Security is one of fundamental features for enterprise adoption. [Apache Ranger™](https://ranger.apache.org) offers many security plugins for many Hadoop ecosystem components, 
 such as HDFS, Hive, HBase, Solr and Sqoop2. However, [Apache Spark™](http://spark.apache.org) is not counted in yet. 
@@ -15,68 +13,13 @@ it is very difficult to guarantee data management in a consistent way.  Apache S
 with Storage based access controls offered by HDFS. This library shares [Ranger Hive plugin](https://cwiki.apache.org/confluence/display/RANGER/Apache+Ranger+0.5.0+Installation#ApacheRanger0.5.0Installation-InstallingApacheHive(1.2.0)) 
 with Hive to help Spark talking to Ranger Admin. 
 
+Please refer to [ACL Management for Spark SQL](docs/spark_sql_authorization.md) to see what spark-authorizer support.
+
 ---
 
-## How to Use
+## Build
 
-#### With Spark Submit Arguments
-Spark Authorizer has been contributed to [spark-packages.org](https://spark-packages.org), see @ https://spark-packages.org/package/yaooqinn/spark-authorizer  
-
-Include this package in your Spark Applications using: spark-shell, pyspark, or spark-submit
-
-For Spark 2.1.x
-```shell
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.1.1.spark2.1
-```
-
-For Spark 2.2.x
-```shell
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.2
-```
-
-For Spark 2.3.x
-```shell
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:1.0.0.spark2.3
-```
-
-#### With Maven
-In your pom.xml, add:
-```xml
-<dependencies>
-  <!-- list of dependencies -->
-  <dependency>
-    <groupId>yaooqinn</groupId>
-    <artifactId>spark-authorizer</artifactId>
-    <version>1.1.1.spark2.1</version>
-  </dependency>
-</dependencies>
-<repositories>
-  <!-- list of other repositories -->
-  <repository>
-    <id>SparkPackagesRepo</id>
-    <url>http://dl.bintray.com/spark-packages/maven</url>
-  </repository>
-</repositories>
-
-```
-
-**This may cause transitive dependency problem**
-
-#### Manually
-
-An Alternative way to use this library is to build it of your own.
-
-see [Building Spark Authorizer](docs/building-spark-authorizer.md)
-
-#### Specifying Spark Authorization for Apache Spark
-
-|Branch| Latest Stable Version |Spark Version| Notes|
-|:---:|:---:|:---:|:---:|
-|master|N/A|master|periodically update to catch up|
-|spark-2.3|1.0.0.spark2.3|2.3.0| - |
-|spark-2.2|1.0.0.spark2.2|2.2.x| - |
-|spark-2.1|1.0.0.spark2.1|2.1.x| - |
-
+Refer to [Building Spark Authorizer](docs/building-spark-authorizer.md)
 
 ---
 
@@ -144,7 +87,7 @@ Without modifying, you either control the spark session such as supplying a Thri
 
 ---
 
-## Suffer for the Authorization Pain
+## Suffer for the Authorization Pain 
 
 We create a ranger policy as below:
 ![ranger-prolcy-details](docs/img/ranger-prolcy-details.png)
@@ -153,8 +96,6 @@ Check Privilage with some simple cases.
 
 #### Show databases
 
-Actually, user [hzyaoqin] should only see only one privileged database -- tpcds_10g_ext, this is not a bug, 
-but a compromise not hacking Spark's source code
 ```sql
 scala> spark.sql("show databases").show
 +--------------+
