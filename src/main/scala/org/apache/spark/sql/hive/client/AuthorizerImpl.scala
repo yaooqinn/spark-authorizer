@@ -54,7 +54,9 @@ object AuthorizerImpl extends Logging {
     val hiveClassLoader = clientLoader.classLoader
     try {
       Thread.currentThread().setContextClassLoader(hiveClassLoader)
-      val authz = client.asInstanceOf[HiveClientImpl].state.getAuthorizerV2
+      val state = getFiledVal(client, "state")
+      val authzV2 = invoke(state, "getAuthorizerV2", Seq.empty, Seq.empty)
+      val authz = authzV2.asInstanceOf[HiveAuthorizer]
       if (authz != null) {
         try {
           authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
