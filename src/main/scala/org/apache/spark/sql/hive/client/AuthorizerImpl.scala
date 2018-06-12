@@ -65,6 +65,7 @@ object AuthorizerImpl extends Logging {
           spark.sharedState.externalCatalog.asInstanceOf[HiveExternalCatalog],
           "client",
           newClient)
+        clientLoader.cachedHive = null
         newClient.asInstanceOf[HiveClientImpl]
     }
 
