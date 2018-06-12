@@ -49,14 +49,16 @@ object AuthorizerImpl extends Logging {
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
       context: HiveAuthzContext): Unit = {
-    val state = getFiledVal(client, "state")
-    val authzV2 = invoke(state, "getAuthorizerV2", Seq.empty, Seq.empty)
-    Option(authzV2) match {
-      case Some(authz) =>
-        try
-          authz.asInstanceOf[HiveAuthorizer]
-            .checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
-        catch {
+    val clientLoader = getFiledVal(client, "clientLoader").asInstanceOf[IsolatedClientLoader]
+    val originClassLoader = Thread.currentThread().getContextClassLoader
+    val hiveClassLoader = clientLoader.classLoader
+    try {
+      Thread.currentThread().setContextClassLoader(hiveClassLoader)
+      val authz = client.asInstanceOf[HiveClientImpl].state.getAuthorizerV2
+      if (authz != null) {
+        try {
+          authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
+        } catch {
           case hae: HiveAccessControlException =>
             error(
               s"""
@@ -71,8 +73,12 @@ object AuthorizerImpl extends Logging {
             throw hae
           case e: Exception => throw e
         }
-      case None =>
-        warn("Authorizer V2 not configured.")
+
+      } else {
+        warn("Authorizer V2 not configured. Skipping privilege checking")
+      }
+    } finally {
+      Thread.currentThread().setContextClassLoader(originClassLoader)
     }
   }
 
