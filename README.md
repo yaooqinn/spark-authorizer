@@ -2,9 +2,9 @@
 # Spark Authorizer [![Build Status](https://travis-ci.org/yaooqinn/spark-authorizer.svg?branch=master)](https://travis-ci.org/yaooqinn/spark-authorizer) [![HitCount](http://hits.dwyl.io/yaooqinn/spark-authorizer.svg)](http://hits.dwyl.io/yaooqinn/spark-authorizer)
 
 **Spark Authorizer** provides you with *SQL Standard Based Authorization* for [Apache Spark™](http://spark.apache.org) 
-like [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
+as same as [SQL Standard Based Hive Authorization](https://cwiki.apache.org/confluence/display/Hive/SQL+Standard+Based+Hive+Authorization). 
 While you are using Spark SQL or Dataset/DataFrame API to load data from tables embedded with [Apache Hive™](https://hive.apache.org) metastore, 
-this library provides row/column level fine-grained access controls with [Apache Ranger™](https://ranger.apache.org) or Hive SQL Standard Based Authorization.
+this library provides row/column level fine-grained access controls by [Apache Ranger™](https://ranger.apache.org) or Hive SQL Standard Based Authorization.
 
 Security is one of fundamental features for enterprise adoption. [Apache Ranger™](https://ranger.apache.org) offers many security plugins for many Hadoop ecosystem components, 
 such as HDFS, Hive, HBase, Solr and Sqoop2. However, [Apache Spark™](http://spark.apache.org) is not counted in yet. 
@@ -13,23 +13,22 @@ it is very difficult to guarantee data management in a consistent way.  Apache S
 with Storage based access controls offered by HDFS. This library shares [Ranger Hive plugin](https://cwiki.apache.org/confluence/display/RANGER/Apache+Ranger+0.5.0+Installation#ApacheRanger0.5.0Installation-InstallingApacheHive(1.2.0)) 
 with Hive to help Spark talking to Ranger Admin. 
 
-Please refer to [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html) to see what spark-authorizer support.
+Please refer to [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html) to see what spark-authorizer supports.
 
----
 
 ## Build
 
 Refer to [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer/docs/building-spark-authorizer.html)
 
----
 
 ## Installing Spark Authorizer to Spark
 
   1. `cp spark-authorizer-<version>.jar $SPARK_HOME/jars`(only required when manually build this)
   2. install ranger-hive-plugin for spark
-  3. configure you `hive-site.xml` and ranger configuration file, you may find an sample in `[./conf]`
+  3. configure you `hive-site.xml` and other ranger configuration files, you may find an sample in `[./conf]`
+  4. set `spark.sql.extensions`=`org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension`
 
----
+**NOTE** the 4th step works for Spark 2.2.x and later, for please check the previous doc for Spark 2.1.x.
 
 ## Interactive Spark Shell
 
@@ -38,54 +37,6 @@ The easiest way to start using Spark is through the Scala shell:
 ```shell
 bin/spark-shell --master yarn --proxy-user hzyaoqin
 ```
-
-Secondly, implement the Authorizer Rule to Spark's extra Optimizations.
-
-```scala
-import org.apache.spark.sql.catalyst.optimizer.Authorizer
-```
-
-```scala
-spark.experimental.extraOptimizations ++= Seq(Authorizer)
-```
-
-Check it out
-```scala
-scala> spark.experimental.extraOptimizations
-res2: Seq[org.apache.spark.sql.catalyst.rules.Rule[org.apache.spark.sql.catalyst.plans.logical.LogicalPlan]] = List(org.apache.spark.sql.catalyst.optimizer.Authorizer$@1196537d)
-```
-
-Note that extra optimizations are appended to the end of all the inner optimizing rules.
-It's good for us to do authorization after column pruning.
-
-Your may notice that it only shut the door for men with a noble character but leave the door open for the scheming ones.
-
-To avoid that, I suggest you modify [ExperimentalMethods.scala#L47](https://github.com/apache/spark/blob/master/sql/core/src/main/scala/org/apache/spark/sql/ExperimentalMethods.scala#L47) and [Bulid Spark](http://spark.apache.org/docs/latest/building-spark.html) of your own.
-
-
-```scala
-@volatile var extraOptimizations: Seq[Rule[LogicalPlan]] = Nil
-```
-to
-
-```scala
-import scala.reflect.runtime.{universe => ru}
-private val rule = "org.apache.spark.sql.catalyst.optimizer.Authorizer"
-private val mirror = ru.runtimeMirror(Utils.getContextOrSparkClassLoader)
-private val clazz = mirror.staticModule(rule)
-private val module = mirror.reflectModule(clazz)
-@volatile var extraOptimizations: Seq[Rule[LogicalPlan]] = Seq(
-  module.instance.asInstanceOf[Rule[LogicalPlan]])
-
-```
-
-Use Scala Reflection to inject it into Spark extra Optimizations in case of maven cyclic dependency error cause failing in comiple Spark source code.
-
-Also, I suggest that make extraOptimizations to a `val` to avoid reassignment in which case you may have to fix some unit test too.
-
-Without modifying, you either control the spark session such as supplying a Thrift/JDBC Sever or hope for "Manner maketh Man"
-
----
 
 ## Suffer for the Authorization Pain 
 

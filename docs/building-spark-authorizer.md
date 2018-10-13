@@ -13,9 +13,9 @@ Note that support for Java 7 is deprecated as of Spark 2.0.0 and may be removed 
 
 So, I suggest you build this library using same Maven / Java / Scala.
 
-## Building agaist different version of Apache Spark
+## Building against different version of Apache Spark
 
-By default, spark authorizer is build agaist spark 2.1.x, which may be incampitable with other spark main branches.
+By default, spark authorizer is build against spark 2.2.2, which may be incompatible with other spark main branches.
 
 ```bash
 # build for spark 2.2.x

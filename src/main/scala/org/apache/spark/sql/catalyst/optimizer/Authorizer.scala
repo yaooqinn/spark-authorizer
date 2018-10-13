@@ -22,8 +22,6 @@ import java.io.File
 import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
 
-import org.apache.spark.SparkConf
-import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.sql.{Logging, SparkSession}
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
@@ -34,17 +32,9 @@ import org.apache.spark.sql.hive.client.AuthzImpl
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 
 /**
- * Do Hive Authorizing V2, with `Apache Ranger` ranger-hive-plugin well configured,
- * This [[Rule]] provides you with column level fine-gained SQL Standard Authorization.
- * Usage:
- *   1. cp spark-authorizer-<version>.jar $SPARK_HOME/jars
- *   2. install ranger-hive-plugin for spark
- *   3. configure you hive-site.xml and ranger configuration file as shown in [./conf]
- *   4. import org.apache.spark.sql.catalyst.optimizer.Authorizer
- *   5. spark.experimental.extraOptimizations ++= Seq(Authorizer)
- *   6. then suffer for the authorizing pain
+ * An Optimizer Rule to do Hive Authorization V2 for Spark SQL.
  */
-object Authorizer extends Rule[LogicalPlan] with Logging {
+case class Authorizer(spark: SparkSession) extends Rule[LogicalPlan] with Logging {
 
   /**
    * Visit the [[LogicalPlan]] recursively to get all hive privilege objects, check the privileges
@@ -57,42 +47,41 @@ object Authorizer extends Rule[LogicalPlan] with Logging {
    */
   override def apply(plan: LogicalPlan): LogicalPlan = {
     val operationType: HiveOperationType = getOperationType(plan)
-    val authzContext: HiveAuthzContext = getHiveAuthzContext(plan)
+    val authzContext = new HiveAuthzContext.Builder().build()
     val (in, out) = PrivilegesBuilder.build(plan)
-    SparkSession.getActiveSession.foreach {s =>
-      val externalCatalog = s.sharedState.externalCatalog
-      externalCatalog match {
-        case _: HiveExternalCatalog =>
-          AuthzImpl.checkPrivileges(s, operationType, in, out, authzContext)
-        case _ =>
-      }
+    spark.sharedState.externalCatalog match {
+      case _: HiveExternalCatalog =>
+        AuthzImpl.checkPrivileges(spark, operationType, in, out, authzContext)
+      case _ =>
     }
-    // We just return the original plan here, so this rule will be executed only once
+    // iff no exception.
+    // We just return the original plan here, so this rule will be executed only once.
     plan
   }
 
-  val dir =
-    SparkHadoopUtil.get.newConfiguration(new SparkConf).get("ranger.plugin.hive.policy.cache.dir")
-
-  if (dir != null) {
-    val file = new File(dir)
-    if (!file.exists()) {
-      if (file.mkdirs()) {
-        info("Creating ranger policy cache directory at " + file.getAbsolutePath)
-        file.deleteOnExit()
+  Option(spark.sparkContext.hadoopConfiguration.get("ranger.plugin.hive.policy.cache.dir")) match {
+    case Some(dir) =>
+      val file = new File(dir)
+      if (!file.exists()) {
+        if (file.mkdirs()) {
+          info("Creating ranger policy cache directory at " + file.getAbsolutePath)
+          file.deleteOnExit()
+        } else {
+          warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
+        }
       } else {
-        warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
+        warn("Ranger policy cache directory already exists")
       }
-    } else {
-      warn("Ranger policy cache directory already exists")
-    }
+
+    case _ =>
   }
 
+
   /**
-    * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
-    * @param plan a spark LogicalPlan
-    * @return
-    */
+   * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
+   * @param plan a spark LogicalPlan
+   * @return
+   */
   private[optimizer] def getHiveOperation(plan: LogicalPlan): HiveOperation = {
     plan match {
       case c: Command => c match {
@@ -185,18 +174,4 @@ object Authorizer extends Rule[LogicalPlan] with Logging {
     HiveOperationType.valueOf(getHiveOperation(logicalPlan).name())
   }
 
-  /**
-   * Provides context information in authorization check call that can be used for
-   * auditing and/or authorization.
-   */
-  private[this] def getHiveAuthzContext(
-      logicalPlan: LogicalPlan,
-      command: Option[String] = None): HiveAuthzContext = {
-    val authzContextBuilder = new HiveAuthzContext.Builder()
-    // set the sql query string, [[LogicalPlan]] contains such information in 2.2 or higher version
-    // so this is for evolving..
-    val cmd = command.getOrElse("")
-    authzContextBuilder.setCommandString(cmd)
-    authzContextBuilder.build()
-  }
 }
