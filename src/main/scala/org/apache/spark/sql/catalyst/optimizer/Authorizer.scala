@@ -30,6 +30,7 @@ import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.hive.{HiveExternalCatalog, PrivilegesBuilder}
 import org.apache.spark.sql.hive.client.AuthzImpl
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
+import org.apache.spark.util.Utils
 
 /**
  * An Optimizer Rule to do Hive Authorization V2 for Spark SQL.
@@ -59,23 +60,38 @@ case class Authorizer(spark: SparkSession) extends Rule[LogicalPlan] with Loggin
     plan
   }
 
-  Option(spark.sparkContext.hadoopConfiguration.get("ranger.plugin.hive.policy.cache.dir")) match {
-    case Some(dir) =>
-      val file = new File(dir)
-      if (!file.exists()) {
-        if (file.mkdirs()) {
-          info("Creating ranger policy cache directory at " + file.getAbsolutePath)
-          file.deleteOnExit()
-        } else {
-          warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
-        }
-      } else {
-        warn("Ranger policy cache directory already exists")
-      }
-
+  policyCacheDir match {
+    case Some(dir) => createCacheDirIfNonExists(dir)
     case _ =>
+      // load resources from ranger configuration files
+      Option(Utils.getContextOrSparkClassLoader.getResource("ranger-hive-security.xml")) match {
+        case Some(url) =>
+          spark.sparkContext.hadoopConfiguration.addResource(url)
+          policyCacheDir match {
+            case Some(dir) => createCacheDirIfNonExists(dir)
+            case _ =>
+          }
+        case _ =>
+      }
   }
 
+  private def policyCacheDir: Option[String] = {
+    Option(spark.sparkContext.hadoopConfiguration.get("ranger.plugin.hive.policy.cache.dir"))
+  }
+
+  private def createCacheDirIfNonExists(dir: String): Unit = {
+    val file = new File(dir)
+    if (!file.exists()) {
+      if (file.mkdirs()) {
+        info("Creating ranger policy cache directory at " + file.getAbsolutePath)
+        file.deleteOnExit()
+      } else {
+        warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
+      }
+    } else {
+      info("Ranger policy cache directory already exists")
+    }
+  }
 
   /**
    * Mapping of [[LogicalPlan]] -> [[HiveOperation]]
