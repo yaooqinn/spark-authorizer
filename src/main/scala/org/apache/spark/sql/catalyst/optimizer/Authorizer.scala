@@ -88,8 +88,6 @@ case class Authorizer(spark: SparkSession) extends Rule[LogicalPlan] with Loggin
       } else {
         warn("Unable to create ranger policy cache directory at " + file.getAbsolutePath)
       }
-    } else {
-      info("Ranger policy cache directory already exists")
     }
   }
 
