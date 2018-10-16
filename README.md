@@ -24,7 +24,7 @@ Refer to [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer
 ## Quick Start
 
   1. `cp spark-authorizer-<version>.jar $SPARK_HOME/jars`(only required when manually build this)
-  2. [install ranger-hive-plugin for spark]((https://yaooqinn.github.io/spark-authorizer/docs/install_plugin.html))
+  2. [install ranger-hive-plugin for spark](https://yaooqinn.github.io/spark-authorizer/docs/install_plugin.html)
   3. configure you `hive-site.xml` and other ranger configuration files, you may find an sample in `[./conf]`
   4. set `spark.sql.extensions`=`org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension`
 
