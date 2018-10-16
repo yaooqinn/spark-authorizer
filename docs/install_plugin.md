@@ -1,5 +1,7 @@
 # Installing Apache Ranger Hive Plugin For Apache Spark
 
+This article illustates how to install the Apache Ranger plugin which is made for Apache Hive to Apache Spark with [spark-authorizer](https://github.com/yaooqinn/spark-authorizer). We guarantee row level fine gained [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html).
+
 Apache Spark is built bundled with built-in Hive Metastore client(version 1.2.1.spark2) jars when `-Phive` is enabled. AFAIK, this version of Hive Metastore client is compatible with all Hive Metastore server 1.2.1 and higher versions.
 
 We **DO NOT** support configuring `spark.sql.hive.metastore.jars` to `maven` or a location of the jars used to instantiate the `HiveMetastoreClient`, `builtin` is the one and only option.
@@ -12,7 +14,7 @@ An offical installation guide of Apache Ranger 0.5.x can be found [here](https:/
 
 1. git clone git@github.com:apache/ranger.git
 2. cd ranger
-3. git fetch ghttps://github.com/apache/ranger.git ranger-0.5.3-rc3:ranger-0.5.3
+3. git fetch https://github.com/apache/ranger.git ranger-0.5.3-rc3:ranger-0.5.3
 4. git checkout ranger-0.5.3
 5. mvn clean compile package assembly:assembly install -Dmaven.test.skip=true
 
