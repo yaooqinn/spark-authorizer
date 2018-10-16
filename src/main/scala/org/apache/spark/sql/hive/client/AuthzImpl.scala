@@ -41,7 +41,6 @@ import org.apache.spark.sql.hive.{AuthzUtils, HiveExternalCatalog}
  *
  */
 object AuthzImpl extends Logging {
-
   def checkPrivileges(
       spark: SparkSession,
       hiveOpType: HiveOperationType,
@@ -86,10 +85,8 @@ object AuthzImpl extends Logging {
           throw hae
         case e: Exception => throw e
       }
-
     } else {
       warn("Authorizer V2 not configured. Skipping privilege checking")
     }
   }
 }
-

@@ -82,21 +82,19 @@ private[sql] object PrivilegesBuilder {
   private[this] def buildQuery(
       plan: LogicalPlan,
       hivePrivilegeObjects: JList[HPO],
-      projectionList: Seq[NamedExpression] = null): Unit = {
+      projectionList: Seq[NamedExpression] = Nil): Unit = {
 
     /**
      * Columns in Projection take priority for column level privilege checking
      * @param table catalogTable of a given relation
      */
     def mergeProjection(table: CatalogTable): Unit = {
-      if (projectionList == null) {
+      if (projectionList.isEmpty) {
         addTableOrViewLevelObjs(
           table.identifier,
           hivePrivilegeObjects,
           table.partitionColumnNames,
           table.schema.fieldNames)
-      } else if (projectionList.isEmpty) {
-        addTableOrViewLevelObjs(table.identifier, hivePrivilegeObjects)
       } else {
         addTableOrViewLevelObjs(
           table.identifier,
@@ -415,10 +413,10 @@ private[sql] object PrivilegesBuilder {
   private def addTableOrViewLevelObjs(
       tableIdentifier: TableIdentifier,
       hivePrivilegeObjects: JList[HPO],
-      partKeys: Seq[String] = null,
-      columns: Seq[String] = null,
+      partKeys: Seq[String] = Nil,
+      columns: Seq[String] = Nil,
       mode: SaveMode = SaveMode.ErrorIfExists,
-      cmdParams: Seq[String] = null): Unit = {
+      cmdParams: Seq[String] = Nil): Unit = {
     tableIdentifier.database match {
       case Some(db) =>
         val tbName = tableIdentifier.table
