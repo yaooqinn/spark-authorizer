@@ -15,20 +15,65 @@ with Hive to help Spark talking to Ranger Admin.
 
 Please refer to [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html) to see what spark-authorizer supports.
 
-
-## Build
-
-Refer to [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer/docs/building-spark-authorizer.html)
-
-
 ## Quick Start
 
-  1. `cp spark-authorizer-<version>.jar $SPARK_HOME/jars`(only required when manually build this)
-  2. [install ranger-hive-plugin for spark](https://yaooqinn.github.io/spark-authorizer/docs/install_plugin.html)
-  3. configure you `hive-site.xml` and other ranger configuration files, you may find an sample in `[./conf]`
-  4. set `spark.sql.extensions`=`org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension`
+### Step 1. Install Spark Authorizer
 
-**NOTE** the 4th step works for Spark 2.2.x and later, for please check the previous doc for Spark 2.1.x.
+Include this package in your Spark Applications using:
+#### spark-shell, pyspark, or spark-submit
+```bash
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:2.0.0
+```
+#### sbt
+If you use the sbt-spark-package plugin, in your sbt build file, add:
+```sbtshell
+spDependencies += "yaooqinn/spark-authorizer:2.0.0"
+```
+Otherwise,
+```sbtshell
+resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
+
+libraryDependencies += "yaooqinn" % "spark-authorizer" % "2.0.0"
+```
+
+#### Maven
+In your pom.xml, add:
+```xml
+<dependencies>
+  <!-- list of dependencies -->
+  <dependency>
+    <groupId>yaooqinn</groupId>
+    <artifactId>spark-authorizer</artifactId>
+    <version>2.0.0</version>
+  </dependency>
+</dependencies>
+<repositories>
+  <!-- list of other repositories -->
+  <repository>
+    <id>SparkPackagesRepo</id>
+    <url>http://dl.bintray.com/spark-packages/maven</url>
+  </repository>
+</repositories>
+```
+
+#### Manully
+If you [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer/docs/building-spark-authorizer.html) manully, you can deploy via:
+```bash
+cp target/spark-authorizer-<version>.jar $SPARK_HOME/jars
+```
+
+### Step 2. Install & Configure Ranger Hive Plugin
+
+Please refer to [Install Ranger Hive Plugin For Apache Spark](https://yaooqinn.github.io/spark-authorizer/docs/install_plugin.html) to learn how to deploy the plugin jars to Apache Spark and set Ranger/Hive configurations.
+
+### Step 3. Enable Spark Authorizer
+
+In `$SPARK_HOME/conf/spark-defaults.conf`, add:
+
+```scala
+spark.sql.extensions=org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension
+```
+**NOTE** `spark.sql.extensions` is only supported by Spark 2.2.x and later, for Spark 2.1.x please use [Version: 1.1.3.spark2.1](https://github.com/yaooqinn/spark-authorizer/tree/78f7d818db773c3567c636575845a413ac560c90) and check the previous doc.
 
 ## Interactive Spark Shell
 
@@ -58,7 +103,7 @@ scala> spark.sql("show databases").show
 +--------------+
 ```
 
-### Switch database
+#### Switch database
 
 ```sql
 scala> spark.sql("use spark_test_db").show

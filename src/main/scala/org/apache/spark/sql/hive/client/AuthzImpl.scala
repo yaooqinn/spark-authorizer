@@ -19,10 +19,11 @@ package org.apache.spark.sql.hive.client
 
 import java.util.{List => JList}
 
+import com.githup.yaooqinn.spark.authorizer.Logging
 import org.apache.hadoop.hive.ql.security.authorization.plugin._
 import org.apache.hadoop.hive.ql.session.SessionState
 
-import org.apache.spark.sql.{Logging, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.hive.{AuthzUtils, HiveExternalCatalog}
 
 /**

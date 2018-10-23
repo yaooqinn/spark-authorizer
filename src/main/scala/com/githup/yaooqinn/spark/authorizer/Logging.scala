@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql
+package com.githup.yaooqinn.spark.authorizer
 
 import org.slf4j.LoggerFactory
 
