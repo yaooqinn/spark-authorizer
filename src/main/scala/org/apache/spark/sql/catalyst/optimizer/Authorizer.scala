@@ -19,10 +19,11 @@ package org.apache.spark.sql.catalyst.optimizer
 
 import java.io.File
 
+import com.githup.yaooqinn.spark.authorizer.Logging
 import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
 
-import org.apache.spark.sql.{Logging, SparkSession}
+import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
