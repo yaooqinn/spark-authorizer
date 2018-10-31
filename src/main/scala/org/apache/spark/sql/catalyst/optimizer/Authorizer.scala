@@ -27,5 +27,7 @@ import org.apache.spark.sql.catalyst.rules.Rule
  * For Apache Spark 2.1.x
  */
 object Authorizer extends Rule[LogicalPlan] with Authorizable {
-  override def spark: SparkSession = SparkSession.getActiveSession.get
+  override def spark: SparkSession = {
+    SparkSession.getActiveSession.getOrElse(SparkSession.getDefaultSession.get)
+  }
 }
