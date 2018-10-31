@@ -1,6 +1,6 @@
 # Installing Apache Ranger Hive Plugin For Apache Spark
 
-This article illustates how to install the Apache Ranger plugin which is made for Apache Hive to Apache Spark with [spark-authorizer](https://github.com/yaooqinn/spark-authorizer). We guarantee row level fine gained [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html).
+This article illustrates how to install the Apache Ranger plugin which is made for Apache Hive to Apache Spark with [spark-authorizer](https://github.com/yaooqinn/spark-authorizer). We guarantee column/row level fine gained [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-authorizer/docs/spark_sql_authorization.html).
 
 Apache Spark is built bundled with built-in Hive Metastore client(version 1.2.1.spark2) jars when `-Phive` is enabled. AFAIK, this version of Hive Metastore client is compatible with all Hive Metastore server 1.2.1 and higher versions.
 
@@ -8,7 +8,7 @@ We **DO NOT** support configuring `spark.sql.hive.metastore.jars` to `maven` or 
 
 Apache Ranger upgrades quite fast, one of the reasons may be to catch up with the higher Hive releases. AFAIK, Apache Ranger 0.6.x and higher versions do not support [1.2.1](https://issues.apache.org/jira/browse/RANGER-1056) anymore, accordingly, you may use Apache Ranger 0.5.x to avoid underlying pitfalls.
 
-An offical installation guide of Apache Ranger 0.5.x can be found [here](https://cwiki.apache.org/confluence/display/RANGER/Apache+Ranger+0.5.0+Installation). The remainder of this article will guide you how to install Apache Ranger Hive Plugin for Apache Spark, which is not mentioned in the offical docuemtation.
+An official installation guide of Apache Ranger 0.5.x can be found [here](https://cwiki.apache.org/confluence/display/RANGER/Apache+Ranger+0.5.0+Installation). The remainder of this article will guide you how to install Apache Ranger Hive Plugin for Apache Spark, which is not mentioned in the official documentation.
 
 ## Building Apache Ranger
 
@@ -18,9 +18,9 @@ An offical installation guide of Apache Ranger 0.5.x can be found [here](https:/
 4. git checkout ranger-0.5.3
 5. mvn clean compile package assembly:assembly install -Dmaven.test.skip=true
 
-If you failed to build the project, please refer to the instructions of the offical doc to see if there are any prequisites.
+If you failed to build the project, please refer to the instructions of the official doc to see if there are any prerequisites.
 
-If you successfully make the mvn command work, all archives of Ranger admin and plugins will be genarated in `./target`, including `ranger-0.5.3-hive-plugin.tar.gz` which is exactly you need for next steps
+If you successfully make the mvn command work, all archives of Ranger admin and plugins will be generated in `./target`, including `ranger-0.5.3-hive-plugin.tar.gz` which is exactly you need for next steps
 ```
 -rw-r--r-- 1 kent hadoop 163667362 Oct 15 15:38 ranger-0.5.3-admin.tar.gz
 -rw-r--r-- 1 kent hadoop 164655504 Oct 15 15:38 ranger-0.5.3-admin.zip
@@ -85,7 +85,7 @@ Secondly, add the jars listed above to `$SPARK_HOME/jars/ranger-hive-plugin-impl
 ## Configuring Ranger for Apache Spark
 
 
-Fisrtly, add the following configurations in `hive-site.xml` to enable Ranger Authorization.
+Firstly, add the following configurations in `hive-site.xml` to enable Ranger Authorization.
 
 ```
 <property>
@@ -183,7 +183,7 @@ At last, create create `ranger-hive-audit.xml` in `$SPARK_HOME/conf` and add the
 Ranger Hive plugins should work well through `spark-authorizer`, when set `spark.sql.extensions`=`org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension`
 ## Additional Notes
 
-If you are using Apache Spark in `cluster` mode, the jar files under `$SPARK_HOME/jars/ranger-hive-plugin-impl/` will not be uploaded automatically. If you are not familar with Spark source code and unable to make some modifications, I suggest you copy all files in `$SPARK_HOME/jars/ranger-hive-plugin-impl/` to `$SPARK_HOME/jars/` and **DELETE** `ranger-hive-plugin-shim-0.5.3.jar` in `$SPARK_HOME/jars/`. This works fine for your whole Spark application but with a tiny problem of Spark UI becasue of jersey jars confliction.
+If you are using Apache Spark in `cluster` mode, the jar files under `$SPARK_HOME/jars/ranger-hive-plugin-impl/` will not be uploaded automatically. If you are not familiar with Spark source code and unable to make some modifications, I suggest you copy all files in `$SPARK_HOME/jars/ranger-hive-plugin-impl/` to `$SPARK_HOME/jars/` and **DELETE** `ranger-hive-plugin-shim-0.5.3.jar` in `$SPARK_HOME/jars/`. This works fine for your whole Spark application but with a tiny problem of Spark UI because of jersey jars confliction.
 
 Also for `cluster` mode Spark applications, `ranger.plugin.hive.policy.cache.dir` in `ranger-hive-security.xml` must be able to create on all NodeManager nodes for the Spark Driver could be generated anywhere. One convenient and effective way is to configure the relative path, such as,
 ```
@@ -192,4 +192,3 @@ Also for `cluster` mode Spark applications, `ranger.plugin.hive.policy.cache.dir
     <value>policycache</value>
  </property>
 ```
-
