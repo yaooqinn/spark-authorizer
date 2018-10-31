@@ -6,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,16 +18,12 @@
 package org.apache.spark.sql.catalyst.optimizer
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
+import org.apache.spark.sql.catalyst.plans.logical._
 import org.apache.spark.sql.catalyst.rules.Rule
 
 /**
  * An Optimizer Rule to do Hive Authorization V2 for Spark SQL.
  *
- * For Apache Spark 2.1.x
+ * For Apache Spark 2.2.x and later
  */
-object Authorizer extends Rule[LogicalPlan] with Authorizable {
-  override def spark: SparkSession = {
-    SparkSession.getActiveSession.getOrElse(SparkSession.getDefaultSession.get)
-  }
-}
+case class AuthorizerExtension(spark: SparkSession) extends Rule[LogicalPlan] with Authorizable
