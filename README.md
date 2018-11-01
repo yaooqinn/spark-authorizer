@@ -22,18 +22,18 @@ Please refer to [ACL Management for Spark SQL](https://yaooqinn.github.io/spark-
 Include this package in your Spark Applications using:
 #### spark-shell, pyspark, or spark-submit
 ```bash
-> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:2.1.0
+> $SPARK_HOME/bin/spark-shell --packages yaooqinn:spark-authorizer:2.1.1
 ```
 #### sbt
 If you use the sbt-spark-package plugin, in your sbt build file, add:
 ```sbtshell
-spDependencies += "yaooqinn/spark-authorizer:2.1.0"
+spDependencies += "yaooqinn/spark-authorizer:2.1.1"
 ```
 Otherwise,
 ```sbtshell
 resolvers += "Spark Packages Repo" at "http://dl.bintray.com/spark-packages/maven"
 
-libraryDependencies += "yaooqinn" % "spark-authorizer" % "2.1.0"
+libraryDependencies += "yaooqinn" % "spark-authorizer" % "2.1.1"
 ```
 
 #### Maven
@@ -44,7 +44,7 @@ In your pom.xml, add:
   <dependency>
     <groupId>yaooqinn</groupId>
     <artifactId>spark-authorizer</artifactId>
-    <version>2.1.0</version>
+    <version>2.1.1</version>
   </dependency>
 </dependencies>
 <repositories>

@@ -72,6 +72,7 @@ object AuthzImpl extends Logging {
     }
 
     val state = clientImpl.state
+    SessionState.setCurrentSessionState(state)
     val user = UserGroupInformation.getCurrentUser.getShortUserName
     if (state.getAuthenticator.getUserName != user) {
       val hiveConf = state.getConf
