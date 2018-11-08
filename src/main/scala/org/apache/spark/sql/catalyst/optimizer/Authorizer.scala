@@ -141,7 +141,7 @@ object Authorizer extends Rule[LogicalPlan] {
           // AddJarCommand
           HiveOperation.EXPLAIN
       }
-      case _: InsertIntoTable => HiveOperation.CREATETABLE_AS_SELECT
+      case _: InsertIntoTable => HiveOperation.QUERY
       case _ => HiveOperation.QUERY
     }
   }
