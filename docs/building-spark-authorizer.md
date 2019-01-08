@@ -26,3 +26,8 @@ maven clean package -Pspark-2.2
 # build for spark 2.3.x
 maven clean package -Pspark-2.3
 ```
+
+```bash
+# build for spark 2.4.x
+maven clean package -Pspark-2.4
+```

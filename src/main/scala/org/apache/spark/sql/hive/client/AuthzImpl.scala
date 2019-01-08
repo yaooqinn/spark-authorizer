@@ -49,10 +49,19 @@ object AuthzImpl extends Logging {
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
-      context: HiveAuthzContext): Unit = {
-    val client = spark.sharedState
-      .externalCatalog.asInstanceOf[HiveExternalCatalog]
-      .client
+      context: HiveAuthzContext,
+      wrapped: Boolean = false): Unit = {
+    val externalCatalog = spark.sharedState.externalCatalog
+    val catalog = if (wrapped) {
+      val method = externalCatalog.getClass.getDeclaredMethod("unwrapped")
+      method.setAccessible(true)
+      method.invoke(externalCatalog).asInstanceOf[HiveExternalCatalog]
+    } else {
+      externalCatalog.asInstanceOf[HiveExternalCatalog]
+    }
+
+    val client = catalog.client
+
     val clientImpl = try {
       client.asInstanceOf[HiveClientImpl]
     } catch {
@@ -64,10 +73,7 @@ object AuthzImpl extends Logging {
           "classLoader", new NonClosableMutableURLClassLoader(clientLoader.baseClassLoader))
         clientLoader.cachedHive = null
         val newClient = clientLoader.createClient()
-        AuthzUtils.setFieldVal(
-          spark.sharedState.externalCatalog.asInstanceOf[HiveExternalCatalog],
-          "client",
-          newClient)
+        AuthzUtils.setFieldVal(catalog, "client", newClient)
         newClient.asInstanceOf[HiveClientImpl]
     }
 

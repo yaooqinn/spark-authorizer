@@ -24,6 +24,7 @@ import org.apache.hadoop.hive.ql.plan.HiveOperation
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.catalyst.catalog.ExternalCatalog
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
@@ -53,6 +54,8 @@ trait Authorizable extends Rule[LogicalPlan] with Logging {
     spark.sharedState.externalCatalog match {
       case _: HiveExternalCatalog =>
         AuthzImpl.checkPrivileges(spark, operationType, in, out, authzContext)
+      case ec: ExternalCatalog if ec.getClass.getSimpleName == "ExternalCatalogWithListener" =>
+        AuthzImpl.checkPrivileges(spark, operationType, in, out, authzContext, true)
       case _ =>
     }
     // iff no exception.
@@ -63,7 +66,6 @@ trait Authorizable extends Rule[LogicalPlan] with Logging {
   def policyCacheDir: Option[String] = {
     Option(spark.sparkContext.hadoopConfiguration.get("ranger.plugin.hive.policy.cache.dir"))
   }
-
 
   def createCacheDirIfNonExists(dir: String): Unit = {
     val file = new File(dir)
