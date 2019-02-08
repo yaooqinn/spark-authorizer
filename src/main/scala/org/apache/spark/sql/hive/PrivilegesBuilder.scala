@@ -112,6 +112,9 @@ private[sql] object PrivilegesBuilder {
 
       case m if m.nodeName == "MetastoreRelation" =>
         mergeProjection(getFieldVal(m, "catalogTable").asInstanceOf[CatalogTable])
+      
+      case c if c.nodeName == "CatalogRelation" =>
+        mergeProjection(getFieldVal(c, "tableMeta").asInstanceOf[CatalogTable])
 
       case l: LogicalRelation if l.catalogTable.nonEmpty => mergeProjection(l.catalogTable.get)
 
