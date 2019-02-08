@@ -114,7 +114,7 @@ private[sql] object PrivilegesBuilder {
         mergeProjection(getFieldVal(m, "catalogTable").asInstanceOf[CatalogTable])
       
       case c if c.nodeName == "CatalogRelation" =>
-      mergeProjection(getFieldVal(c, "tableMeta").asInstanceOf[CatalogTable])
+        mergeProjection(getFieldVal(c, "tableMeta").asInstanceOf[CatalogTable])
 
       case l: LogicalRelation if l.catalogTable.nonEmpty => mergeProjection(l.catalogTable.get)
 
