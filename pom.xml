@@ -143,6 +143,12 @@
             <artifactId>hive-exec</artifactId>
             <version>${hive.version}</version>
             <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.spark</groupId>
+                    <artifactId>spark-core_2.10</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Dependencies For Suites -->
@@ -174,6 +180,25 @@
             <version>${spark.version}</version>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ranger</groupId>
+            <artifactId>ranger-hive-plugin-shim</artifactId>
+            <version>0.5.3</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-shim-0.5.3.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ranger</groupId>
+            <artifactId>ranger-plugin-classloader</artifactId>
+            <version>0.5.3</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-plugin-classloader-0.5.3.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>commons-collections</groupId>
+            <artifactId>commons-collections</artifactId>
+            <version>3.2.1</version>
         </dependency>
 
     </dependencies>
