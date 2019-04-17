@@ -18,15 +18,17 @@
 package org.apache.spark.sql.hive.client
 
 import java.util.{List => JList}
+import java.util.concurrent.locks.{Lock, ReentrantLock}
 
 import com.githup.yaooqinn.spark.authorizer.Logging
+import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hive.ql.security.authorization.plugin._
 import org.apache.hadoop.hive.ql.session.SessionState
 import org.apache.hadoop.security.UserGroupInformation
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.hive.{AuthzUtils, HiveExternalCatalog}
-import org.apache.spark.sql.internal.NonClosableMutableURLClassLoader
+import org.apache.spark.sql.hive.{AuthzUtils, HiveUtils}
+import org.apache.spark.util.Utils
 
 /**
  * A Tool for Authorizer implementation.
@@ -44,32 +46,98 @@ import org.apache.spark.sql.internal.NonClosableMutableURLClassLoader
  *
  */
 object AuthzImpl extends Logging {
+
+  private var _cachedHiveClient: HiveClientImpl = null
+  private val cachedHiveClientLock: Lock = new ReentrantLock()
+
+
+  private[client] lazy val extraConfig: Map[String, String] = {
+
+    var classLoader = Thread.currentThread.getContextClassLoader
+    if (classLoader == null) classLoader = AuthzImpl.getClass.getClassLoader
+    val confURL = classLoader.getResource("hive-security.xml")
+    if (confURL != null) {
+      val conf = new Configuration(false)
+      info(s"Read extra configurations from file `${confURL.getPath}`")
+      conf.addResource(confURL)
+      val keys = Seq("hive.security.authorization.enabled",
+        "hive.security.authorization.manager",
+        "hive.security.authenticator.manager",
+        "hive.conf.restricted.list")
+      // Because the hive client use for authorization do need meta data store in the metastore,
+      // so we config this client to use a new in-memory Derby database here to avoid multi
+      // connections exception in using embedded derby database
+      var config = HiveUtils.newTemporaryConfiguration(true)
+      for(key <- keys) {
+        val value: String = conf.get(key)
+        if(value != null) {
+          config = config + (key -> conf.get(key))
+          info(s"Get extra config: ${key}=${value}")
+        }
+      }
+      config
+    } else {
+      Map.empty
+    }
+  }
+
+
+  private [sql] def getCachedHiveClient(spark: SparkSession): HiveClientImpl = {
+    if (_cachedHiveClient == null) {
+      cachedHiveClientLock.lock()
+      if (_cachedHiveClient != null) return _cachedHiveClient
+      _cachedHiveClient = newClientForPrivilegeCheck(spark)
+      cachedHiveClientLock.unlock()
+    }
+    return _cachedHiveClient
+  }
+
+  /**
+    * Create a [[HiveClient]] used for authorization.
+    *
+    * Currently this must always be Hive 13 as this is the version of Hive that is packaged
+    * with Spark SQL.
+    */
+  protected[hive] def newClientForPrivilegeCheck(spark: SparkSession): HiveClientImpl = {
+
+    val builtinHiveVersion: String = try {
+      // spark 2.2
+      AuthzUtils.getFieldVal(HiveUtils, "hiveExecutionVersion").toString
+    } catch {
+      case _: NoSuchFieldException =>
+        // spark 2.3
+        AuthzUtils.getFieldVal(HiveUtils, "builtinHiveVersion").toString
+    }
+    info(s"Initializing privilege check hive, version $builtinHiveVersion")
+
+
+
+    // the new client may use current thread local SessionState as its state, so we need to
+    // detach current thread local session in order to get a new state
+    SessionState.detachSession()
+    val loader = new IsolatedClientLoader(
+      version = IsolatedClientLoader.hiveVersion(builtinHiveVersion),
+      sparkConf = spark.sqlContext.sparkContext.conf,
+      execJars = Seq.empty,
+      hadoopConf = spark.sqlContext.sessionState.newHadoopConf(),
+      config = extraConfig,
+      isolationOn = false,
+      baseClassLoader = Utils.getContextOrSparkClassLoader)
+    val c = loader.createClient().asInstanceOf[HiveClientImpl]
+    // make sure we get a new state
+    val _ = c.state
+    c
+  }
+
   def checkPrivileges(
       spark: SparkSession,
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
-      context: HiveAuthzContext): Unit = {
-    val client = spark.sharedState
-      .externalCatalog.asInstanceOf[HiveExternalCatalog]
-      .client
-    val clientImpl = try {
-      client.asInstanceOf[HiveClientImpl]
-    } catch {
-      case _: ClassCastException =>
-        val clientLoader =
-          AuthzUtils.getFieldVal(client, "clientLoader").asInstanceOf[IsolatedClientLoader]
-        AuthzUtils.setFieldVal(clientLoader, "isolationOn", false)
-        AuthzUtils.setFieldVal(clientLoader,
-          "classLoader", new NonClosableMutableURLClassLoader(clientLoader.baseClassLoader))
-        clientLoader.cachedHive = null
-        val newClient = clientLoader.createClient()
-        AuthzUtils.setFieldVal(
-          spark.sharedState.externalCatalog.asInstanceOf[HiveExternalCatalog],
-          "client",
-          newClient)
-        newClient.asInstanceOf[HiveClientImpl]
-    }
+      context: HiveAuthzContext,
+      loggerError: Boolean = true): Unit = {
+
+    val clientImpl = getCachedHiveClient(spark)
 
     val state = clientImpl.state
     SessionState.setCurrentSessionState(state)
@@ -88,7 +156,7 @@ object AuthzImpl extends Logging {
           authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
         } catch {
           case hae: HiveAccessControlException =>
-            error(
+            if (loggerError) error(
               s"""
                  |+===============================+
                  ||Spark SQL Authorization Failure|
