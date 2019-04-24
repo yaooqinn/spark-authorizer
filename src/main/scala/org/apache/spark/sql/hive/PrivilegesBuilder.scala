@@ -24,7 +24,7 @@ import scala.collection.JavaConverters._
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HivePrivilegeObject => HPO}
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.{HivePrivilegeObjectType, HivePrivObjectActionType}
 
-import org.apache.spark.sql.SaveMode
+import org.apache.spark.sql.{SaveMode, SparkSession}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
 import org.apache.spark.sql.catalyst.catalog.CatalogTable
@@ -41,6 +41,9 @@ import org.apache.spark.sql.types.StructField
  * [[LogicalPlan]] -> list of [[HivePrivilegeObject]]s
  */
 private[sql] object PrivilegesBuilder {
+  private lazy val spark: SparkSession = {
+    SparkSession.getActiveSession.getOrElse(SparkSession.getDefaultSession.get)
+  }
 
   /**
    * Build input and output privilege objects from a Spark's [[LogicalPlan]]
@@ -413,14 +416,21 @@ private[sql] object PrivilegesBuilder {
    * @param hivePrivilegeObjects input or output list
    * @param mode Append or overwrite
    */
-  private def addTableOrViewLevelObjs(
+  private[sql] def addTableOrViewLevelObjs(
       tableIdentifier: TableIdentifier,
       hivePrivilegeObjects: JList[HPO],
       partKeys: Seq[String] = Nil,
       columns: Seq[String] = Nil,
       mode: SaveMode = SaveMode.ErrorIfExists,
       cmdParams: Seq[String] = Nil): Unit = {
-    tableIdentifier.database match {
+
+    val newTableIdentifier: TableIdentifier = if (tableIdentifier.database.isEmpty) {
+      spark.sessionState.catalog.getTableMetadata(tableIdentifier).identifier
+    } else {
+      tableIdentifier
+    }
+
+    newTableIdentifier.database match {
       case Some(db) =>
         val tbName = tableIdentifier.table
         val hivePrivObjectActionType = getHivePrivObjActionType(mode)
