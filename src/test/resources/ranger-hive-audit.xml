@@ -21,32 +21,7 @@
 
     <property>
         <name>xasecure.audit.is.enabled</name>
-        <value>true</value>
-    </property>
-
-    <property>
-        <name>xasecure.audit.destination.db</name>
         <value>false</value>
-    </property>
-
-    <property>
-        <name>xasecure.audit.destination.db.jdbc.driver</name>
-        <value>com.mysql.jdbc.Driver</value>
-    </property>
-
-    <property>
-        <name>xasecure.audit.destination.db.jdbc.url</name>
-        <value>jdbc:mysql://10.171.161.78/ranger</value>
-    </property>
-
-    <property>
-        <name>xasecure.audit.destination.db.password</name>
-        <value>rangeradmin</value>
-    </property>
-
-    <property>
-        <name>xasecure.audit.destination.db.user</name>
-        <value>rangeradmin</value>
     </property>
 
 </configuration>

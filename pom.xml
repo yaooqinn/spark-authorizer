@@ -56,6 +56,7 @@
         <hive.group>org.spark-project.hive</hive.group>
         <hive.version>1.2.1.spark2</hive.version>
         <java.version>1.7</java.version>
+        <aspectj.version>1.9.1</aspectj.version>
     </properties>
 
     <repositories>
@@ -183,22 +184,54 @@
         </dependency>
         <dependency>
             <groupId>org.apache.ranger</groupId>
-            <artifactId>ranger-hive-plugin-shim</artifactId>
+            <artifactId>ranger-hive-plugin</artifactId>
             <version>0.5.3</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-shim-0.5.3.jar</systemPath>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-impl/ranger-hive-plugin-0.5.3.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>org.apache.ranger</groupId>
-            <artifactId>ranger-plugin-classloader</artifactId>
+            <artifactId>ranger-plugins-common</artifactId>
             <version>0.5.3</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-plugin-classloader-0.5.3.jar</systemPath>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-impl/ranger-plugins-common-0.5.3.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ranger</groupId>
+            <artifactId>ranger-plugins-audit</artifactId>
+            <version>0.5.3</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-impl/ranger-plugins-audit-0.5.3.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.ranger</groupId>
+            <artifactId>ranger-plugins-cred</artifactId>
+            <version>0.5.3</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-impl/ranger-plugins-cred-0.5.3.jar</systemPath>
+        </dependency>
+
+        <dependency>
+            <groupId>gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.2.4</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/ranger/ranger-0.5.3-hive-plugin/lib/ranger-hive-plugin-impl/gson-2.2.4.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>commons-collections</groupId>
             <artifactId>commons-collections</artifactId>
             <version>3.2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
+            <version>${aspectj.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjweaver</artifactId>
+            <version>${aspectj.version}</version>
         </dependency>
 
     </dependencies>
@@ -259,9 +292,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.12.4</version>
+                <version>2.20.1</version>
                 <configuration>
-                    <skipTests>true</skipTests>
+                    <argLine>-javaagent:${settings.localRepository}/org/aspectj/aspectjweaver/1.9.1/aspectjweaver-1.9.1.jar</argLine>
                 </configuration>
             </plugin>
             <!-- enable scalatest -->
@@ -273,6 +306,7 @@
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
                     <filereports>TestSuite.txt</filereports>
+                    <argLine>-javaagent:${settings.localRepository}/org/aspectj/aspectjweaver/${aspectj.version}/aspectjweaver-${aspectj.version}.jar</argLine>
                 </configuration>
                 <executions>
                     <execution>
