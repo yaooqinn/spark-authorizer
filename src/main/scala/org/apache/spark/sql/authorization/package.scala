@@ -14,9 +14,10 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+package org.apache.spark.sql
 
-package org.apache.ranger.authorization.spark.authorizer
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject
 
-import org.apache.spark.sql.authorization.AuthorizationExtension
-
-class RangerSparkSQLExtension extends AuthorizationExtension {}
+package object authorization {
+  type HivePrivilegeObjectList = java.util.List[HivePrivilegeObject]
+}

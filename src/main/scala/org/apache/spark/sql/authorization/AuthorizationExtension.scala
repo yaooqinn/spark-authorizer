@@ -14,9 +14,14 @@
  *   See the License for the specific language governing permissions and
  *   limitations under the License.
  */
+package org.apache.spark.sql.authorization
 
-package org.apache.ranger.authorization.spark.authorizer
+import org.apache.spark.sql.SparkSessionExtensions
+import org.apache.spark.sql.catalyst.optimizer.AuthorizerExtension
 
-import org.apache.spark.sql.authorization.AuthorizationExtension
 
-class RangerSparkSQLExtension extends AuthorizationExtension {}
+class AuthorizationExtension extends (SparkSessionExtensions => Unit) {
+  override def apply(ext: SparkSessionExtensions): Unit = {
+    ext.injectOptimizerRule(AuthorizerExtension)
+  }
+}

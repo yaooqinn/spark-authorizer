@@ -134,8 +134,7 @@ object AuthzImpl extends Logging {
       hiveOpType: HiveOperationType,
       inputObjs: JList[HivePrivilegeObject],
       outputObjs: JList[HivePrivilegeObject],
-      context: HiveAuthzContext,
-      loggerError: Boolean = true): Unit = {
+      context: HiveAuthzContext): Unit = {
 
     val clientImpl = getCachedHiveClient(spark)
 
@@ -152,23 +151,7 @@ object AuthzImpl extends Logging {
     val authz = clientImpl.state.getAuthorizerV2
     clientImpl.withHiveState {
       if (authz != null) {
-        try {
           authz.checkPrivileges(hiveOpType, inputObjs, outputObjs, context)
-        } catch {
-          case hae: HiveAccessControlException =>
-            if (loggerError) error(
-              s"""
-                 |+===============================+
-                 ||Spark SQL Authorization Failure|
-                 ||-------------------------------|
-                 ||${hae.getMessage}
-                 ||-------------------------------|
-                 ||Spark SQL Authorization Failure|
-                 |+===============================+
-               """.stripMargin)
-            throw hae
-          case e: Exception => throw e
-        }
       } else {
         warn("Authorizer V2 not configured. Skipping privilege checking")
       }

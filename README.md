@@ -71,11 +71,12 @@ Please refer to [Install Ranger Hive Plugin For Apache Spark](https://yaooqinn.g
 In `$SPARK_HOME/conf/spark-defaults.conf`, add:
 
 ```scala
-spark.sql.extensions org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension
+spark.sql.extensions org.apache.spark.sql.autherization.AuthorizationExtension
+spark.sql.authorization.provider org.apache.spark.sql.authorization.HiveV2AuthorizationProvider
 spark.driver.extraJavaOptions -javaagent:/path/to/aspectjweaver-{version}.jar
-
 ```
 **NOTE** `spark.sql.extensions` is only supported by Spark 2.2.x and later, for Spark 2.1.x please use [Version: 1.1.3.spark2.1](https://github.com/yaooqinn/spark-authorizer/tree/78f7d818db773c3567c636575845a413ac560c90) and check the previous doc.
+`spark.sql.authorization.provider` default use `org.apache.spark.sql.authorization.HiveV2AuthorizationProvider` as authorization provider and this provider use hive-ranger-plugin for authorization. User can also implement custom provider by extending `org.apache.spark.sql.authorization.AuthorizationProvider` class.
 
 
 

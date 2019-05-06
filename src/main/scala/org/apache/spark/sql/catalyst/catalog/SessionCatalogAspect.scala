@@ -20,18 +20,17 @@ package org.apache.spark.sql.catalyst.catalog
 
 import java.util.{ArrayList => JAList}
 
-import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType, HivePrivilegeObject => HPO}
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveOperationType, HivePrivilegeObject => HPO}
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.HivePrivilegeObjectType
 import org.aspectj.lang.ProceedingJoinPoint
 import org.aspectj.lang.annotation.{Around, Aspect}
-import scala.util.Try
 
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.authorization.{AuthorizationProvider, AuthorizationRequest}
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.optimizer.HivePrivilegeObject
 import org.apache.spark.sql.hive.PrivilegesBuilder
-import org.apache.spark.sql.hive.client.AuthzImpl
 
 
 /**
@@ -53,16 +52,15 @@ class SessionCatalogAspect extends Logging {
     logDebug("filterListDatabasesResult")
     val dbs = pjp.proceed.asInstanceOf[Seq[String]]
     val operationType: HiveOperationType = HiveOperationType.SWITCHDATABASE
-    val authzContext = new HiveAuthzContext.Builder().build()
-    dbs.filter { db =>
+    val requests = dbs.map { db =>
       val inputObjs = new JAList[HPO]
       val outputObjs = new JAList[HPO]
       inputObjs.add(
         HivePrivilegeObject(HivePrivilegeObjectType.DATABASE, db, db))
-      Try(AuthzImpl.checkPrivileges(
-        spark, operationType, inputObjs, outputObjs, authzContext, false
-      )).isSuccess
+      new AuthorizationRequest(operationType, inputObjs, outputObjs)
     }
+    val result = AuthorizationProvider.checkPrivileges(spark, requests)
+    (dbs zip result).filter(_._2).map(_._1)
   }
 
   @Around(
@@ -74,8 +72,7 @@ class SessionCatalogAspect extends Logging {
     logDebug("filterListTablesResult")
     val tables = pjp.proceed.asInstanceOf[Seq[TableIdentifier]]
     val operationType: HiveOperationType = HiveOperationType.SHOW_TABLESTATUS
-    val authzContext = new HiveAuthzContext.Builder().build()
-    tables.filter { table =>
+    val requests = tables.map { table =>
       val inputObjs = new JAList[HPO]
       val outputObjs = new JAList[HPO]
       val tableMeta = spark.sessionState.catalog.getTableMetadata(table)
@@ -84,10 +81,10 @@ class SessionCatalogAspect extends Logging {
         inputObjs,
         tableMeta.partitionColumnNames,
         tableMeta.schema.fieldNames)
-      Try(AuthzImpl.checkPrivileges(
-        spark, operationType, inputObjs, outputObjs, authzContext, false
-      )).isSuccess
+      new AuthorizationRequest(operationType, inputObjs, outputObjs)
     }
+    val result = AuthorizationProvider.checkPrivileges(spark, requests)
+    (tables zip result).filter(_._2).map(_._1)
   }
 
 }

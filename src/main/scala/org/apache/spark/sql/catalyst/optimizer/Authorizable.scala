@@ -21,15 +21,15 @@ import java.io.File
 
 import com.githup.yaooqinn.spark.authorizer.Logging
 import org.apache.hadoop.hive.ql.plan.HiveOperation
-import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAuthzContext, HiveOperationType}
+import org.apache.hadoop.hive.ql.security.authorization.plugin.{HiveAccessControlException, HiveOperationType}
 
 import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.authorization.{AuthorizationProvider, AuthorizationRequest}
 import org.apache.spark.sql.catalyst.plans.logical.{Command, LogicalPlan}
 import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.execution.command._
 import org.apache.spark.sql.execution.datasources.{CreateTempViewUsing, InsertIntoDataSourceCommand, InsertIntoHadoopFsRelationCommand}
 import org.apache.spark.sql.hive.{HiveExternalCatalog, PrivilegesBuilder}
-import org.apache.spark.sql.hive.client.AuthzImpl
 import org.apache.spark.sql.hive.execution.CreateHiveTableAsSelectCommand
 import org.apache.spark.util.Utils
 
@@ -48,11 +48,29 @@ trait Authorizable extends Rule[LogicalPlan] with Logging {
    */
   override def apply(plan: LogicalPlan): LogicalPlan = {
     val operationType: HiveOperationType = getOperationType(plan)
-    val authzContext = new HiveAuthzContext.Builder().build()
     val (in, out) = PrivilegesBuilder.build(plan)
     spark.sharedState.externalCatalog match {
       case _: HiveExternalCatalog =>
-        AuthzImpl.checkPrivileges(spark, operationType, in, out, authzContext)
+        try {
+          AuthorizationProvider.checkPrivileges(
+            spark,
+            new AuthorizationRequest(operationType, in, out)
+          )
+        } catch {
+          case hae: HiveAccessControlException =>
+            error(
+              s"""
+                 |+===============================+
+                 ||Spark SQL Authorization Failure|
+                 ||-------------------------------|
+                 ||${hae.getMessage}
+                 ||-------------------------------|
+                 ||Spark SQL Authorization Failure|
+                 |+===============================+
+               """.stripMargin)
+            throw hae
+          case e: Exception => throw e
+        }
       case _ =>
     }
     // iff no exception.

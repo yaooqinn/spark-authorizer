@@ -28,12 +28,12 @@ import org.apache.ranger.plugin.model.RangerPolicy
 import org.apache.ranger.plugin.model.RangerPolicy.{RangerPolicyItem, RangerPolicyItemAccess, RangerPolicyResource}
 import org.apache.ranger.plugin.service.RangerBasePlugin
 import org.apache.ranger.plugin.util.ServicePolicies
-import org.apache.spark.SparkFunSuite
-import org.apache.spark.sql.hive.AuthzUtils
-import org.apache.spark.sql.{SQLContext, SQLImplicits, SparkSession}
 import org.scalatest.BeforeAndAfterAll
-
 import scala.collection.JavaConverters._
+
+import org.apache.spark.SparkFunSuite
+import org.apache.spark.sql.{SparkSession, SQLContext, SQLImplicits}
+import org.apache.spark.sql.hive.AuthzUtils
 
 
 class PrivilegeTest extends SparkFunSuite with BeforeAndAfterAll {
