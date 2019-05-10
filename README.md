@@ -71,7 +71,7 @@ Please refer to [Install Ranger Hive Plugin For Apache Spark](https://yaooqinn.g
 In `$SPARK_HOME/conf/spark-defaults.conf`, add:
 
 ```scala
-spark.sql.extensions org.apache.spark.sql.autherization.AuthorizationExtension
+spark.sql.extensions org.apache.spark.sql.authorization.AuthorizationExtension
 spark.sql.authorization.provider org.apache.spark.sql.authorization.HiveV2AuthorizationProvider
 spark.driver.extraJavaOptions -javaagent:/path/to/aspectjweaver-{version}.jar
 ```

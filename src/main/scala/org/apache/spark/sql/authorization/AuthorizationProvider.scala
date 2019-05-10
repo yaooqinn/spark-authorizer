@@ -18,6 +18,7 @@ package org.apache.spark.sql.authorization
 
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAccessControlException
 
+import org.apache.spark.internal.Logging
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.util.Utils
 
@@ -33,7 +34,7 @@ abstract class AuthorizationProvider {
   def checkPrivileges(spark: SparkSession, request: AuthorizationRequest): Unit
 }
 
-object AuthorizationProvider {
+object AuthorizationProvider extends Logging {
   private val propKey = "spark.sql.authorization.provider"
   // scalastyle:off
   private val defaultProviderClassName = "org.apache.spark.sql.authorization.HiveV2AuthorizationProvider"
@@ -43,6 +44,7 @@ object AuthorizationProvider {
     val spark: SparkSession = SparkSession.getActiveSession
         .getOrElse(SparkSession.getDefaultSession.get)
     val clazzName = spark.conf.get(propKey, defaultProviderClassName)
+    logInfo(s"Use Class: ${clazzName} as Spark SQL authorization provider")
     val clazz = Utils.classForName(clazzName)
     clazz.newInstance().asInstanceOf[AuthorizationProvider]
   }
