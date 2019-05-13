@@ -41,6 +41,11 @@
             <version>${spark.version}</version>
             <scope>${spark.scope}</scope>
         </dependency>
+        <dependency>
+            <groupId>yaooqinn</groupId>
+            <artifactId>spark-plugin-classloader</artifactId>
+            <version>${parent.version}</version>
+        </dependency>
 
         <!-- Dependencies For Suites -->
         <dependency>

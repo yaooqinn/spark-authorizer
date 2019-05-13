@@ -139,6 +139,7 @@
             <modules>
                 <module>authorizer-plugin</module>
                 <module>authorizer-plugin-shim</module>
+                <module>spark-plugin-classloader</module>
             </modules>
         </profile>
         <profile>

@@ -16,5 +16,5 @@ install:
 
 script:
   - mvn package -q -Dmaven.javadoc.skip=true -B -V
-  - mvn package -Pspark-2.2 -q -Dmaven.javadoc.skip=true -B -V
-  - mvn package -Pspark-2.3 -q -Dmaven.javadoc.skip=true -B -V
+  - mvn package -Pspark-2.2 -P all -q -Dmaven.javadoc.skip=true -B -V
+  - mvn package -Pspark-2.3 -P all -q -Dmaven.javadoc.skip=true -B -V
