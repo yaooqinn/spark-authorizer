@@ -193,10 +193,10 @@ LOL...
 
 ```bash
 # for spark 2.3
-mvn -P spark-2.3 package
+mvn -P spark-2.3 -P all package
 
 # for spark 2.2
-mvn -P spark-2.2 package
+mvn -P spark-2.2 -P all package
 ```
 
 ### Enable AspectJ for Tests

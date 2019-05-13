@@ -90,3 +90,4 @@ spark-warehouse/
 *.Rproj.*
 
 .Rproj.user
+authorizer-plugin-shim/src/main/resources/META-INF/aop.xml

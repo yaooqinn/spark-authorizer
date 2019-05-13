@@ -34,26 +34,30 @@ abstract class AuthorizationProvider {
   def checkPrivileges(spark: SparkSession, request: AuthorizationRequest): Unit
 }
 
-object AuthorizationProvider extends Logging {
+object AuthorizationProvider extends AuthorizationProvider with Logging {
   private val propKey = "spark.sql.authorization.provider"
   // scalastyle:off
   private val defaultProviderClassName = "org.apache.spark.sql.authorization.HiveV2AuthorizationProvider"
   // scalastyle:on
 
-  private lazy val provider: AuthorizationProvider = {
+
+  private val provider: AuthorizationProvider = {
     val spark: SparkSession = SparkSession.getActiveSession
         .getOrElse(SparkSession.getDefaultSession.get)
     val clazzName = spark.conf.get(propKey, defaultProviderClassName)
     logInfo(s"Use Class: ${clazzName} as Spark SQL authorization provider")
-    val clazz = Utils.classForName(clazzName)
+    // scalastyle:off
+    val clazz = Class.forName(clazzName, true, this.getClass.getClassLoader)
+    // scalastyle:on
     clazz.newInstance().asInstanceOf[AuthorizationProvider]
   }
 
-  def checkPrivileges(spark: SparkSession, requests: Seq[AuthorizationRequest]): Seq[Boolean] = {
+  override def checkPrivileges(
+    spark: SparkSession, requests: Seq[AuthorizationRequest]): Seq[Boolean] = {
     provider.checkPrivileges(spark, requests)
   }
 
-  def checkPrivileges(spark: SparkSession, request: AuthorizationRequest): Unit = {
+  override def checkPrivileges(spark: SparkSession, request: AuthorizationRequest): Unit = {
     provider.checkPrivileges(spark, request)
   }
 }
