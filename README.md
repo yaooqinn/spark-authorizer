@@ -59,7 +59,7 @@ In your pom.xml, add:
 #### Manully
 If you [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer/docs/building-spark-authorizer.html) manully, you can deploy via:
 ```bash
-cp target/spark-authorizer-<version>.jar $SPARK_HOME/jars
+cp authorizer-plugin/target/spark-authorizer-<version>.jar $SPARK_HOME/jars
 ```
 
 ### Step 2. Install & Configure Ranger Hive Plugin
