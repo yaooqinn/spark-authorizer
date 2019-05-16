@@ -215,11 +215,19 @@ class PrivilegeTest extends SparkFunSuite with BeforeAndAfterAll {
             val ret = spark.sql("show databases")
             assert(ret.count() === 1)
             ret.show(false)
+
+            val ret2 = spark.sessionState.catalog.listDatabases("*")
+            assert(ret2.size === 1)
+
+            val ret3 = spark.sessionState.catalog.listDatabases()
+            assert(ret3.size === 1)
           }
         }
       }
     }
   }
+
+
 
   // In order to run this test, we must add the below option to JVM option.
   // see README.md

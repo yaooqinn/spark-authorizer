@@ -46,7 +46,7 @@ class SessionCatalogAspect extends Logging {
   logInfo("SessionatalogAspect initiating")
 
   @Around(
-    "execution(public * org.apache.spark.sql.catalyst.catalog.SessionCatalog.listDatabases())"
+    "execution(public * org.apache.spark.sql.catalyst.catalog.SessionCatalog.listDatabases(..))"
   )
   def filterListDatabasesResult(pjp: ProceedingJoinPoint): Seq[String] = {
     logDebug("filterListDatabasesResult")
