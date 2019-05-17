@@ -202,6 +202,32 @@ class PrivilegeTest extends SparkFunSuite with BeforeAndAfterAll {
     }
   }
 
+  test("catalog create table") {
+    withPolicies(
+      policy("root", "*", "*", Seq("all")),
+      policy("u1", "d1", "*", Seq("create", "all")),
+      policy("u2", "d1", "*", Seq("select"))
+    ) {
+      asUser("u1") {
+        withDatabase("d1") {
+          println(s"current database: ${spark.catalog.currentDatabase}")
+          val path = getTestResourceFile("people").getAbsolutePath
+          val table = spark.catalog.createTable("t1", path)
+          println(s"table: ${table}")
+          spark.sql("show tables").show()
+          asUser("u2") {
+            println(s"current database: ${spark.catalog.currentDatabase}")
+            spark.table("t1").count()
+            assertPermissionDenied {
+              spark.catalog.createTable("t2", path)
+            }
+          }
+          spark.sql("drop table t1")
+        }
+      }
+    }
+  }
+
   // In order to run this test, we must add the below option to JVM option.
   // see README.md
   test("show databases") {

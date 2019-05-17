@@ -425,7 +425,7 @@ private[sql] object PrivilegesBuilder {
       cmdParams: Seq[String] = Nil): Unit = {
 
     val newTableIdentifier: TableIdentifier = if (tableIdentifier.database.isEmpty) {
-      spark.sessionState.catalog.getTableMetadata(tableIdentifier).identifier
+      TableIdentifier(tableIdentifier.table, Some(spark.catalog.currentDatabase))
     } else {
       tableIdentifier
     }
