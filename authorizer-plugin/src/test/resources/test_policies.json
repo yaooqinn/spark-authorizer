@@ -1,0 +1,361 @@
+{
+  "serviceName": "test",
+  "serviceId": 2,
+  "policyVersion": 2,
+  "policyUpdateTime": "20190416-19:28:44.000-+0800",
+  "policies": [
+    {
+      "service": "test",
+      "name": "test-1-20190416112843",
+      "isAuditEnabled": true,
+      "resources": {
+        "database": {
+          "values": [
+            "*"
+          ],
+          "isExcludes": false,
+          "isRecursive": false
+        },
+        "column": {
+          "values": [
+            "*"
+          ],
+          "isExcludes": false,
+          "isRecursive": false
+        },
+        "table": {
+          "values": [
+            "*"
+          ],
+          "isExcludes": false,
+          "isRecursive": false
+        }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            {
+              "type": "select",
+              "isAllowed": true
+            },
+            {
+              "type": "update",
+              "isAllowed": true
+            },
+            {
+              "type": "create",
+              "isAllowed": true
+            },
+            {
+              "type": "drop",
+              "isAllowed": true
+            },
+            {
+              "type": "alter",
+              "isAllowed": true
+            },
+            {
+              "type": "index",
+              "isAllowed": true
+            },
+            {
+              "type": "lock",
+              "isAllowed": true
+            },
+            {
+              "type": "all",
+              "isAllowed": true
+            }
+          ],
+          "users": [
+            "admin"
+          ],
+          "groups": [],
+          "conditions": [],
+          "delegateAdmin": true
+        }
+      ],
+      "id": 5,
+      "isEnabled": true,
+      "version": 1
+    },
+    {
+      "service": "test",
+      "name": "test-2-20190416112843",
+      "isAuditEnabled": true,
+      "resources": {
+        "database": {
+          "values": [
+            "*"
+          ],
+          "isExcludes": false,
+          "isRecursive": false
+        },
+        "udf": {
+          "values": [
+            "*"
+          ],
+          "isExcludes": false,
+          "isRecursive": false
+        }
+      },
+      "policyItems": [
+        {
+          "accesses": [
+            {
+              "type": "select",
+              "isAllowed": true
+            },
+            {
+              "type": "update",
+              "isAllowed": true
+            },
+            {
+              "type": "create",
+              "isAllowed": true
+            },
+            {
+              "type": "drop",
+              "isAllowed": true
+            },
+            {
+              "type": "alter",
+              "isAllowed": true
+            },
+            {
+              "type": "index",
+              "isAllowed": true
+            },
+            {
+              "type": "lock",
+              "isAllowed": true
+            },
+            {
+              "type": "all",
+              "isAllowed": true
+            }
+          ],
+          "users": [
+            "admin"
+          ],
+          "groups": [],
+          "conditions": [],
+          "delegateAdmin": true
+        }
+      ],
+      "id": 6,
+      "isEnabled": true,
+      "version": 1
+    }
+  ],
+  "serviceDef": {
+    "name": "hive",
+    "implClass": "org.apache.ranger.services.hive.RangerServiceHive",
+    "label": "Hive Server2",
+    "description": "Hive Server2",
+    "configs": [
+      {
+        "itemId": 1,
+        "name": "username",
+        "type": "string",
+        "mandatory": true,
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Username"
+      },
+      {
+        "itemId": 2,
+        "name": "password",
+        "type": "password",
+        "mandatory": true,
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Password"
+      },
+      {
+        "itemId": 3,
+        "name": "jdbc.driverClassName",
+        "type": "string",
+        "mandatory": true,
+        "defaultValue": "org.apache.hive.jdbc.HiveDriver",
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": ""
+      },
+      {
+        "itemId": 4,
+        "name": "jdbc.url",
+        "type": "string",
+        "mandatory": true,
+        "defaultValue": "",
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": ""
+      },
+      {
+        "itemId": 5,
+        "name": "commonNameForCertificate",
+        "type": "string",
+        "mandatory": false,
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Common Name for Certificate"
+      }
+    ],
+    "resources": [
+      {
+        "itemId": 1,
+        "name": "database",
+        "type": "string",
+        "level": 10,
+        "mandatory": true,
+        "lookupSupported": true,
+        "recursiveSupported": false,
+        "excludesSupported": true,
+        "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+        "matcherOptions": {
+          "wildCard": "true",
+          "ignoreCase": "true"
+        },
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Hive Database",
+        "description": "Hive Database"
+      },
+      {
+        "itemId": 2,
+        "name": "table",
+        "type": "string",
+        "level": 20,
+        "parent": "database",
+        "mandatory": true,
+        "lookupSupported": true,
+        "recursiveSupported": false,
+        "excludesSupported": true,
+        "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+        "matcherOptions": {
+          "wildCard": "true",
+          "ignoreCase": "true"
+        },
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Hive Table",
+        "description": "Hive Table"
+      },
+      {
+        "itemId": 3,
+        "name": "udf",
+        "type": "string",
+        "level": 20,
+        "parent": "database",
+        "mandatory": true,
+        "lookupSupported": true,
+        "recursiveSupported": false,
+        "excludesSupported": true,
+        "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+        "matcherOptions": {
+          "wildCard": "true",
+          "ignoreCase": "true"
+        },
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Hive UDF",
+        "description": "Hive UDF"
+      },
+      {
+        "itemId": 4,
+        "name": "column",
+        "type": "string",
+        "level": 30,
+        "parent": "table",
+        "mandatory": true,
+        "lookupSupported": true,
+        "recursiveSupported": false,
+        "excludesSupported": true,
+        "matcher": "org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher",
+        "matcherOptions": {
+          "wildCard": "true",
+          "ignoreCase": "true"
+        },
+        "validationRegEx": "",
+        "validationMessage": "",
+        "uiHint": "",
+        "label": "Hive Column",
+        "description": "Hive Column"
+      }
+    ],
+    "accessTypes": [
+      {
+        "itemId": 1,
+        "name": "select",
+        "label": "select",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 2,
+        "name": "update",
+        "label": "update",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 3,
+        "name": "create",
+        "label": "Create",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 4,
+        "name": "drop",
+        "label": "Drop",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 5,
+        "name": "alter",
+        "label": "Alter",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 6,
+        "name": "index",
+        "label": "Index",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 7,
+        "name": "lock",
+        "label": "Lock",
+        "impliedGrants": []
+      },
+      {
+        "itemId": 8,
+        "name": "all",
+        "label": "All",
+        "impliedGrants": [
+          "select",
+          "update",
+          "create",
+          "drop",
+          "alter",
+          "index",
+          "lock"
+        ]
+      }
+    ],
+    "policyConditions": [],
+    "contextEnrichers": [],
+    "enums": [],
+    "id": 3,
+    "guid": "3e1afb5a-184a-4e82-9d9c-87a5cacc243c",
+    "isEnabled": true,
+    "createTime": "20190404-11:08:40.000-+0800",
+    "updateTime": "20190404-11:08:40.000-+0800",
+    "version": 1
+  }
+}
