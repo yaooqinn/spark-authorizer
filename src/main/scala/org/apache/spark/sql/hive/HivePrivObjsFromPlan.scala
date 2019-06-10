@@ -81,7 +81,7 @@ private[sql] object HivePrivObjsFromPlan {
           currentDb,
           table.partitionColumnNames.asJava,
           table.schema.fieldNames.toList.asJava,
-          mode = mode)
+          mode)
       } else if (projectionList.isEmpty) {
         addTableOrViewLevelObjs(table.identifier, hivePrivilegeObjects, currentDb, mode = mode)
       } else {
@@ -91,8 +91,7 @@ private[sql] object HivePrivObjsFromPlan {
             currentDb,
             table.partitionColumnNames.filter(projectionList.map(_.name).contains(_)).asJava,
             projectionList.map(_.name).asJava,
-            mode = mode)
-
+            mode)
       }
     }
     logicalPlan match {
