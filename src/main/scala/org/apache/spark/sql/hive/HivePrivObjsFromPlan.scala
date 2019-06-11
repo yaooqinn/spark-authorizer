@@ -66,29 +66,32 @@ private[sql] object HivePrivObjsFromPlan {
       currentDb: String,
       hivePrivilegeObjects: JList[HivePrivilegeObject],
       hivePrivObjType: HivePrivilegeObjectType = HivePrivilegeObjectType.TABLE_OR_VIEW,
-      projectionList: Seq[NamedExpression] = null): Unit = {
+      projectionList: Seq[NamedExpression] = null,
+      mode: SaveMode = SaveMode.ErrorIfExists): Unit = {
 
     /**
      * Columns in Projection take priority for column level privilege checking
      * @param table catalogTable of a given relation
      */
-    def handleProjectionForRelation(table: CatalogTable): Unit = {
+    def handleProjectionForRelation(table: CatalogTable, mode: SaveMode): Unit = {
       if (projectionList == null) {
         addTableOrViewLevelObjs(
           table.identifier,
           hivePrivilegeObjects,
           currentDb,
           table.partitionColumnNames.asJava,
-          table.schema.fieldNames.toList.asJava)
+          table.schema.fieldNames.toList.asJava,
+          mode)
       } else if (projectionList.isEmpty) {
-        addTableOrViewLevelObjs(table.identifier, hivePrivilegeObjects, currentDb)
+        addTableOrViewLevelObjs(table.identifier, hivePrivilegeObjects, currentDb, mode = mode)
       } else {
-        addTableOrViewLevelObjs(
-          table.identifier,
-          hivePrivilegeObjects,
-          currentDb,
-          table.partitionColumnNames.filter(projectionList.map(_.name).contains(_)).asJava,
-          projectionList.map(_.name).asJava)
+          addTableOrViewLevelObjs(
+            table.identifier,
+            hivePrivilegeObjects,
+            currentDb,
+            table.partitionColumnNames.filter(projectionList.map(_.name).contains(_)).asJava,
+            projectionList.map(_.name).asJava,
+            mode)
       }
     }
     logicalPlan match {
@@ -101,17 +104,17 @@ private[sql] object HivePrivObjsFromPlan {
           projList)
 
       case LogicalRelation(_, _, Some(table)) =>
-        handleProjectionForRelation(table)
+        handleProjectionForRelation(table, mode)
 
       case mr @ MetastoreRelation(_, _) =>
-        handleProjectionForRelation(mr.catalogTable)
+        handleProjectionForRelation(mr.catalogTable, mode)
 
       case UnresolvedRelation(tableIdentifier, _) =>
         // Normally, we shouldn't meet UnresolvedRelation here in an optimized plan.
         // Unfortunately, the real world is always a place where miracles happen.
         // We check the privileges directly without resolving the plan and leave everything
         // to spark to do.
-        addTableOrViewLevelObjs(tableIdentifier, hivePrivilegeObjects, currentDb)
+        addTableOrViewLevelObjs(tableIdentifier, hivePrivilegeObjects, currentDb, mode = mode)
 
       case bn: BinaryNode =>
         buildUnaryHivePrivObjs(
@@ -152,10 +155,11 @@ private[sql] object HivePrivObjsFromPlan {
           buildUnaryHivePrivObjs(_, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
         }
 
-      case InsertIntoTable(table, _, child, _, _) =>
+      case InsertIntoTable(table, _, child, overwrite, _) =>
         // table is a logical plan not catalogTable, so miss overwrite and partition info.
         // TODO: deal with overwrite
-        buildUnaryHivePrivObjs(table, currentDb, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
+        buildUnaryHivePrivObjs(table, currentDb, outputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW,
+          mode = overwriteToSaveMode(overwrite.enabled))
         buildUnaryHivePrivObjs(child, currentDb, inputObjs, HivePrivilegeObjectType.TABLE_OR_VIEW)
 
       case r: RunnableCommand => r match {
@@ -463,7 +467,7 @@ private[sql] object HivePrivObjsFromPlan {
     if (overwrite) {
       SaveMode.Overwrite
     } else {
-      SaveMode.ErrorIfExists
+      SaveMode.Append
     }
   }
 }
