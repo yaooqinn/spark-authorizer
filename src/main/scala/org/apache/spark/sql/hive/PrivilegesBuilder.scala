@@ -20,10 +20,8 @@ package org.apache.spark.sql.hive
 import java.util.{ArrayList => JAList, List => JList}
 
 import scala.collection.JavaConverters._
-
 import org.apache.hadoop.hive.ql.security.authorization.plugin.{HivePrivilegeObject => HPO}
-import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.{HivePrivilegeObjectType, HivePrivObjectActionType}
-
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject.{HivePrivObjectActionType, HivePrivilegeObjectType}
 import org.apache.spark.sql.SaveMode
 import org.apache.spark.sql.catalyst.TableIdentifier
 import org.apache.spark.sql.catalyst.analysis.UnresolvedRelation
@@ -105,6 +103,8 @@ private[sql] object PrivilegesBuilder {
     }
 
     plan match {
+      case p: View => mergeProjection(getFieldVal(p, "desc").asInstanceOf[CatalogTable])
+
       case p: Project => buildQuery(p.child, hivePrivilegeObjects, p.projectList)
 
       case h if h.nodeName == "HiveTableRelation" =>
