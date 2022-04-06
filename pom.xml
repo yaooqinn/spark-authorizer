@@ -22,10 +22,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>yaooqinn</groupId>
-    <artifactId>spark-authorizer</artifactId>
-    <name>Spark Authorizer</name>
-    <version>2.1.1</version>
-    <packaging>jar</packaging>
+    <artifactId>spark-authorizer-parent</artifactId>
+    <name>Spark Authorizer Plugin Parent</name>
+    <version>2.1.2-SNAPSHOT</version>
+    <packaging>pom</packaging>
 
     <licenses>
         <license>
@@ -43,6 +43,13 @@
             <organization>yaooqinn</organization>
             <url>http://www.jianshu.com/u/14effefbbf32</url>
         </developer>
+        <developer>
+            <id>zhike.chen</id>
+            <name>Zhike Chen</name>
+            <email>zhike.chen@advance.ai</email>
+            <organization>Advance.AI</organization>
+            <url>https://github.com/kk17</url>
+        </developer>
     </developers>
 
     <properties>
@@ -56,6 +63,7 @@
         <hive.group>org.spark-project.hive</hive.group>
         <hive.version>1.2.1.spark2</hive.version>
         <java.version>1.7</java.version>
+        <aspectj.version>1.9.1</aspectj.version>
     </properties>
 
     <repositories>
@@ -110,73 +118,49 @@
             </snapshots>
         </pluginRepository>
     </pluginRepositories>
+    <distributionManagement>
+        <snapshotRepository>
+            <id>advai-nexus</id>
+            <url>https://n3-nexus3.advai.net/nexus/repository/maven-snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>advai-nexus</id>
+            <url>https://n3-nexus3.advai.net/nexus/repository/maven-releases</url>
+        </repository>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>${scala.version}</version>
-            <scope>provided</scope>
-        </dependency>
+    </distributionManagement>
 
-        <dependency>
-            <groupId>${spark.group}</groupId>
-            <artifactId>spark-sql_${scala.binary.version}</artifactId>
-            <version>${spark.version}</version>
-            <scope>${spark.scope}</scope>
-        </dependency>
+    <profiles>
+        <profile>
+            <id>all</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <modules>
+                <module>authorizer-plugin</module>
+                <module>authorizer-plugin-shim</module>
+                <module>spark-plugin-classloader</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>spark-2.2</id>
+            <properties>
+                <spark.version>2.2.2</spark.version>
+                <scalatest.version>2.2.6</scalatest.version>
+            </properties>
+        </profile>
 
-        <dependency>
-            <groupId>${spark.group}</groupId>
-            <artifactId>spark-hive_${scala.binary.version}</artifactId>
-            <version>${spark.version}</version>
-            <scope>${spark.scope}</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>${hive.group}</groupId>
-            <artifactId>hive-exec</artifactId>
-            <version>${hive.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <!-- Dependencies For Suites -->
-        <dependency>
-            <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${scala.binary.version}</artifactId>
-            <version>${scalatest.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>${spark.group}</groupId>
-            <artifactId>spark-core_${scala.binary.version}</artifactId>
-            <version>${spark.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>${spark.group}</groupId>
-            <artifactId>spark-catalyst_${scala.binary.version}</artifactId>
-            <version>${spark.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${spark.group}</groupId>
-            <artifactId>spark-sql_${scala.binary.version}</artifactId>
-            <version>${spark.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-
-    </dependencies>
+        <profile>
+            <id>spark-2.3</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <spark.version>2.3.2</spark.version>
+                <scalatest.version>3.0.3</scalatest.version>
+            </properties>
+        </profile>
+    </profiles>
 
     <build>
         <plugins>
@@ -230,52 +214,7 @@
                 </configuration>
             </plugin>
 
-            <!-- disable surefire -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.12.4</version>
-                <configuration>
-                    <skipTests>true</skipTests>
-                </configuration>
-            </plugin>
-            <!-- enable scalatest -->
-            <plugin>
-                <groupId>org.scalatest</groupId>
-                <artifactId>scalatest-maven-plugin</artifactId>
-                <version>1.0</version>
-                <configuration>
-                    <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
-                    <junitxml>.</junitxml>
-                    <filereports>TestSuite.txt</filereports>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>test</id>
-                        <goals>
-                            <goal>test</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 
-    <profiles>
-        <profile>
-            <id>spark-2.2</id>
-            <properties>
-                <spark.version>2.2.2</spark.version>
-                <scalatest.version>2.2.6</scalatest.version>
-            </properties>
-        </profile>
-
-        <profile>
-            <id>spark-2.3</id>
-            <properties>
-                <spark.version>2.3.2</spark.version>
-                <scalatest.version>3.0.3</scalatest.version>
-            </properties>
-        </profile>
-    </profiles>
 </project>

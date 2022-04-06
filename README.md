@@ -59,7 +59,7 @@ In your pom.xml, add:
 #### Manully
 If you [Building Spark Authorizer](https://yaooqinn.github.io/spark-authorizer/docs/building-spark-authorizer.html) manully, you can deploy via:
 ```bash
-cp target/spark-authorizer-<version>.jar $SPARK_HOME/jars
+cp authorizer-plugin/target/spark-authorizer-<version>.jar $SPARK_HOME/jars
 ```
 
 ### Step 2. Install & Configure Ranger Hive Plugin
@@ -71,9 +71,14 @@ Please refer to [Install Ranger Hive Plugin For Apache Spark](https://yaooqinn.g
 In `$SPARK_HOME/conf/spark-defaults.conf`, add:
 
 ```scala
-spark.sql.extensions=org.apache.ranger.authorization.spark.authorizer.RangerSparkSQLExtension
+spark.sql.extensions org.apache.spark.sql.authorization.AuthorizationExtension
+spark.sql.authorization.provider org.apache.spark.sql.authorization.HiveV2AuthorizationProvider
+spark.driver.extraJavaOptions -javaagent:/path/to/aspectjweaver-{version}.jar
 ```
 **NOTE** `spark.sql.extensions` is only supported by Spark 2.2.x and later, for Spark 2.1.x please use [Version: 1.1.3.spark2.1](https://github.com/yaooqinn/spark-authorizer/tree/78f7d818db773c3567c636575845a413ac560c90) and check the previous doc.
+`spark.sql.authorization.provider` default use `org.apache.spark.sql.authorization.HiveV2AuthorizationProvider` as authorization provider and this provider use hive-ranger-plugin for authorization. User can also implement custom provider by extending `org.apache.spark.sql.authorization.AuthorizationProvider` class.
+
+
 
 ## Interactive Spark Shell
 
@@ -181,3 +186,26 @@ res3: Array[org.apache.spark.sql.Row] = Array([1,AAAAAAAABAAAAAAA,1998-01-01,nul
 LOL...
 
 ---
+
+## Development
+
+### Package
+
+```bash
+# for spark 2.3
+mvn -P spark-2.3 -P all package
+
+# for spark 2.2
+mvn -P spark-2.2 -P all package
+```
+
+### Enable AspectJ for Tests
+
+This Spark extension use AspectJ to intercept the Spark internal class method,
+therefore AspectJ jar must add to JVM options in order to run some unit tests.
+
+For test using Intellij IDEA, get `aspectjweaver` jar file path from maven
+dependencies then add follow to Test `Configuration -> VM Parameters`:
+```
+-javaagent:/path/to/aspectjweaver-{version}.jar
+```
